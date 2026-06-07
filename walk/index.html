@@ -595,7 +595,7 @@
       </div>
 
       <div id="redeem-phone-block" hidden>
-        <label for="phone" class="form-label">Mac Redeem — which phone?</label>
+        <label for="phone" class="form-label">Test redeem — which phone?</label>
         <select id="phone"></select>
         <p class="hint" id="phone-hint"></p>
       </div>
@@ -650,7 +650,7 @@
         <div class="workflow-note mb-3">
           <strong>After your walk:</strong><br />
           <strong>Phone:</strong> Settings → <em>Deal alert test log</em> → <strong>Upload log</strong>.<br />
-          Then <em>Load cloud log</em> here (Mac: <em>Check log</em> marks pass/fail against the playbook).
+          Then <em>Load cloud log</em> here → <em>Check log</em> for pass/fail vs the playbook.
         </div>
         <div class="log-check mt-0 mb-0" id="log-check" style="border: none; background: transparent; padding: 0;">
           <label for="log-phone" class="form-label">Phone (cloud upload)</label>
@@ -673,9 +673,17 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="field-log-analyze.js"></script>
+  <script src="playbook-evaluate.js"></script>
   <script src="hosted-crypto.js"></script>
   <script src="hosted-bootstrap.js"></script>
   <script>
+    (function () {
+      const h = location.hostname;
+      if ((h === "127.0.0.1" || h === "localhost") && !location.search.includes("local=1")) {
+        location.replace("https://angelorepole.github.io/hoibo-scenarios/walk/");
+      }
+    })();
     const PHONE_SLOT_KEY = "walk_scenario_phone_slot";
     const CENTER_KEY = "walk_scenario_center";
     const DEVICES_SH = "dev_console/scripts/app/devices.sh";
@@ -707,7 +715,9 @@
       prod: ["ar14"],
     };
 
-    const el = (id) => document.getElementById(id);
+    function activeScenarioId() {
+      return currentRun?.scenario_id || currentRun?.preset_id || el("preset").value;
+    }
 
     function formatWhen(iso) {
       if (!iso) return "—";
@@ -1202,7 +1212,7 @@
       if (!steps.length) return;
       try {
         const body = {
-          scenario_id: el("preset").value,
+          scenario_id: activeScenarioId(),
           run_id: currentRun?.run_id,
           run_active: !!currentRun,
         };
@@ -1724,7 +1734,7 @@
         return;
       }
       const body = {
-        scenario_id: el("preset").value,
+        scenario_id: activeScenarioId(),
         logJson: raw,
       };
       if (currentRun?.run_id) body.run_id = currentRun.run_id;
@@ -1761,7 +1771,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              scenario_id: el("preset").value,
+              scenario_id: activeScenarioId(),
               logJson: raw,
               run_id: currentRun?.run_id,
             }),

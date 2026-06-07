@@ -89,6 +89,28 @@
     return data;
   }
 
+  async function findScenario(scenarioId) {
+    const catalog = await getCatalog();
+    const scenarios = catalog.scenarios || catalog.presets || [];
+    const scenario = scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) throw new Error("Unknown scenario: " + scenarioId);
+    return scenario;
+  }
+
+  async function loadRunMeta(runId) {
+    if (!runId) return null;
+    try {
+      const data = await supabaseFn("scenario-runs", {
+        action: "get",
+        run_id: runId,
+        console_env: consoleEnv,
+      });
+      return data.run || null;
+    } catch (_) {
+      return { run_id: runId, note: "Run not found in storage" };
+    }
+  }
+
   window.__hostedScenariosApi = async function (path, opts) {
     opts = opts || {};
     const method = (opts.method || "GET").toUpperCase();
@@ -149,17 +171,96 @@
     if (path === "/api/scenarios/run" && method === "PATCH") {
       return supabaseFn("scenario-runs", { action: "save", run: body.run });
     }
-    if (path === "/api/scenarios/abandon" || path === "/api/scenarios/cleanup") {
+    if (path === "/api/scenarios/abandon" && method === "POST") {
       const runId = body.run_id;
-      if (runId) {
-        await supabaseFn("scenario-runs", {
-          action: "delete",
-          run_id: runId,
-          console_env: consoleEnv,
-        });
-      }
-      return { ok: true };
+      if (!runId) throw new Error("run_id required");
+      return supabaseFn("scenario-runs", {
+        action: "abandon",
+        run_id: runId,
+        console_env: consoleEnv,
+        notes: body.notes,
+        cleanup_db: body.cleanup_db,
+      });
     }
+    if (path === "/api/scenarios/cleanup" && method === "POST") {
+      const runId = body.run_id;
+      if (!runId) throw new Error("run_id required");
+      return supabaseFn("scenario-runs", {
+        action: "finish",
+        run_id: runId,
+        console_env: consoleEnv,
+        outcome: body.outcome,
+        notes: body.notes,
+      });
+    }
+    if (path === "/api/scenarios/redeem" && method === "POST") {
+      return supabaseFn("scenario-runs", {
+        action: "redeem",
+        console_env: consoleEnv,
+        run_id: body.run_id,
+        shop_index: body.shop_index,
+        offer_index: body.offer_index,
+        app_id: body.app_id,
+      });
+    }
+    if (path === "/api/scenarios/analyze-log" && method === "POST") {
+      const scenarioId = body.scenario_id || body.preset_id;
+      if (!scenarioId) throw new Error("scenario_id required");
+      const log = body.log ?? body.logJson ?? body.log_json;
+      if (log == null) throw new Error("log or logJson required");
+      if (!globalThis.ScenarioFieldLog) {
+        throw new Error("field-log-analyze.js not loaded");
+      }
+      const scenario = await findScenario(String(scenarioId));
+      const runMeta = body.run_id ? await loadRunMeta(String(body.run_id)) : null;
+      const result = globalThis.ScenarioFieldLog.analyzeFieldLog(scenario, log, runMeta);
+      const playbookSteps = globalThis.ScenarioPlaybook
+        ? globalThis.ScenarioPlaybook.evaluatePlaybook(scenario, {
+            runMeta,
+            log,
+            runActive: Boolean(runMeta?.shops?.length),
+            fieldLogOk: result.ok,
+          })
+        : [];
+      if (body.run_id && body.app_id) {
+        try {
+          const run = runMeta || (await loadRunMeta(String(body.run_id)));
+          if (run?.run_id) {
+            const checks = run.field_log_checks || [];
+            checks.push({
+              at: new Date().toISOString(),
+              app_id: body.app_id,
+              ok: result.ok,
+              summary: result.summary,
+            });
+            run.field_log_checks = checks;
+            await supabaseFn("scenario-runs", { action: "save", run, console_env: consoleEnv });
+          }
+        } catch (_) {
+          /* optional persist */
+        }
+      }
+      return { ok: true, ...result, playbookSteps };
+    }
+    if (path === "/api/scenarios/playbook-status" && method === "POST") {
+      const scenarioId = body.scenario_id || body.preset_id;
+      if (!scenarioId) throw new Error("scenario_id required");
+      if (!globalThis.ScenarioPlaybook) {
+        throw new Error("playbook-evaluate.js not loaded");
+      }
+      const scenario = await findScenario(String(scenarioId));
+      const runMeta = body.run_id ? await loadRunMeta(String(body.run_id)) : null;
+      const log = body.log ?? body.logJson ?? body.log_json;
+      const runActive = body.run_active != null ? Boolean(body.run_active) : Boolean(runMeta);
+      const playbookSteps = globalThis.ScenarioPlaybook.evaluatePlaybook(scenario, {
+        runMeta,
+        log,
+        runActive,
+        fieldLogOk: body.field_log_ok,
+      });
+      return { ok: true, playbookSteps };
+    }
+
     if (path.startsWith("/api/scenarios/field-logs")) {
       if (method === "GET") {
         const q = new URL(path, "http://x").searchParams;
@@ -198,8 +299,7 @@
       };
     }
 
-    throw new Error(
-      "Hosted mode: use Mac console for redeem / analyze (" + path + ")",
-    );
+    throw new Error("Unsupported hosted scenarios API: " + path);
   };
 })();
+
