@@ -28,8 +28,8 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
+  <meta name="walk-build" content="20260607083914" />
   <title>Scenarios — Hoibò Dev Console</title>
-  <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
   <meta name="theme-color" content="#f59207" />
@@ -719,6 +719,9 @@
   <script src="hosted-crypto.js"></script>
   <script src="hosted-bootstrap.js"></script>
   <script>
+    const el = (id) => document.getElementById(id);
+    const statusEl = el("status");
+
     (function () {
       const h = location.hostname;
       if ((h === "127.0.0.1" || h === "localhost") && !location.search.includes("local=1")) {
@@ -728,7 +731,6 @@
     const PHONE_SLOT_KEY = "walk_scenario_phone_slot";
     const CENTER_KEY = "walk_scenario_center";
     const DEVICES_SH = "dev_console/scripts/app/devices.sh";
-    const el = (id) => document.getElementById(id);
 
     let catalog = null;
     let scenarioList = [];
@@ -1091,7 +1093,6 @@
       }
       updateRunUiMode();
     }
-    const statusEl = el("status");
 
     function setStatus(msg, ok) {
       statusEl.textContent = msg;
