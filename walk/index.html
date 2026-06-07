@@ -28,7 +28,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260607100840" />
+  <meta name="walk-build" content="20260607101258" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -2368,9 +2368,15 @@
 
         catalog = catalogRes.catalog;
         const rawList = catalogRes.scenarios || catalog.scenarios || [];
-        const copy = typeof ScenarioDisplay !== "undefined" ? await ScenarioDisplay.loadHumanCopy() : {};
+        const hostedApi = typeof window.__hostedScenariosApi === "function";
+        const copy =
+          typeof ScenarioDisplay !== "undefined" && hostedApi
+            ? await ScenarioDisplay.loadHumanCopy()
+            : {};
         scenarioList = rawList.map((s) =>
-          typeof ScenarioDisplay !== "undefined" ? ScenarioDisplay.applyHumanCopy(s, copy) : s,
+          typeof ScenarioDisplay !== "undefined" && hostedApi
+            ? ScenarioDisplay.applyHumanCopy(s, copy)
+            : s,
         );
         fillPhones(phonesRes.phones);
         registryDevices = devicesRes.devices || [];
