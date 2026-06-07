@@ -28,7 +28,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260607092138" />
+  <meta name="walk-build" content="20260607095625" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -653,7 +653,6 @@
 
         <button type="button" class="btn btn-primary" id="btn-run" disabled>Run scenario</button>
         <p class="hint" id="run-hint" hidden></p>
-        <button type="button" class="btn btn-secondary" id="btn-load-run">Load active run</button>
       </div>
 
       <div id="scenario-run-actions">
@@ -1106,7 +1105,7 @@
       } else {
         hint.hidden = false;
         hint.textContent =
-          "Before Run: fresh app install on ticked phones (Mac → refresh-stage-phones.sh or prod install). Run wipes the cloud DB only — not on-device memory.";
+          "Run seeds test shops on the server at your map centre. Your phones are not changed — use Mac Dev Console → Real iPhones only if you need a clean install.";
       }
       updateRunUiMode();
     }
@@ -1806,10 +1805,6 @@
       }
     }
 
-    async function loadActiveRun() {
-      await tryLoadActiveRun({ silent: false });
-    }
-
     async function setConsoleTarget(target) {
       await api("/api/environment/target", {
         method: "POST",
@@ -1855,10 +1850,6 @@
       } else {
         msg.textContent = "Run JSON in Supabase Storage · shops in DB when scenario is running.";
       }
-    }
-
-    async function loadLastRun() {
-      return loadActiveRun();
     }
 
     async function cleanupRun() {
@@ -2041,7 +2032,6 @@
     el("btn-fetch-cloud-log").onclick = fetchCloudLog;
 
     el("btn-run").onclick = runScenario;
-    el("btn-load-run").onclick = loadLastRun;
     el("btn-cleanup").onclick = cleanupRun;
     el("btn-abandon").onclick = abandonRun;
 
