@@ -159,17 +159,29 @@
       border-radius: var(--radius);
       padding: 0.5rem 0.65rem;
       background: var(--surface);
-      max-height: 8rem;
-      overflow-y: auto;
+      max-height: none;
     }
 
     .device-pick label {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.78rem;
-      margin-bottom: 0.35rem;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: start;
+      column-gap: 0.45rem;
+      row-gap: 0.1rem;
+      font-size: 0.82rem;
+      line-height: 1.35;
+      margin-bottom: 0.45rem;
       cursor: pointer;
+    }
+
+    .device-pick label input {
+      margin-top: 0.15rem;
+    }
+
+    .device-pick .device-meta {
+      color: var(--muted);
+      font-size: 0.72rem;
+      white-space: nowrap;
     }
 
     .run-history {
@@ -588,7 +600,7 @@
       <div class="device-pick" id="device-pick">
         <p class="hint">Loading devices…</p>
       </div>
-      <p class="hint">Tick phones used (user + merchant). Saved in run log.</p>
+      <p class="hint" id="device-pick-hint">Tick phones used (user + merchant). Saved in run log.</p>
 
       <button type="button" class="btn btn-primary" id="btn-run" disabled>Run scenario</button>
       <p class="hint" id="run-hint" hidden></p>
@@ -670,6 +682,7 @@
     let registryDevices = [];
     let envStatus = null;
     let consoleEnvLabel = "STAGE";
+    let consoleEnvSlug = "stage";
     let currentRun = null;
     let map;
     let centerMarker = null;
@@ -736,20 +749,35 @@
       }
     }
 
+    function devicesForPicker() {
+      return registryDevices.filter(
+        (d) => (d.backend_env || "stage") === consoleEnvSlug,
+      );
+    }
+
     function renderDevicePick() {
       const box = el("device-pick");
+      const hint = el("device-pick-hint");
+      const visible = devicesForPicker();
       if (!registryDevices.length) {
         box.innerHTML = `<p class="hint">No devices.json — copy devices.json.example</p>`;
+        hint.textContent = "Tick phones used (user + merchant). Saved in run log.";
+        return;
+      }
+      if (!visible.length) {
+        box.innerHTML = `<p class="hint">No phones for ${consoleEnvLabel}. Add one in devices.json with backend_env "${consoleEnvSlug}".</p>`;
+        hint.textContent = `Showing ${consoleEnvLabel} phones only — switch env for other lanes.`;
         return;
       }
       const saved = new Set(savedDeviceSlots());
-      box.innerHTML = registryDevices
+      box.innerHTML = visible
         .map((d) => {
-          const roles = (d.roles || []).join("+") || "device";
+          const roles = (d.roles || []).join(" + ") || "device";
           const checked = saved.has(String(d.slot)) ? " checked" : "";
-          return `<label><input type="checkbox" value="${d.slot}" data-device-slot="${d.slot}"${checked} /> ${d.name} <span class="hint">(${roles} · ${d.backend_env || "stage"})</span></label>`;
+          return `<label><input type="checkbox" value="${d.slot}" data-device-slot="${d.slot}"${checked} /><span>${d.name}<br /><span class="device-meta">${roles}</span></span></label>`;
         })
         .join("");
+      hint.textContent = `Showing ${consoleEnvLabel} phones only — switch env for other lanes. Saved in run log.`;
       box.querySelectorAll("input").forEach((input) => {
         input.onchange = () => {
           const slots = [...box.querySelectorAll("input:checked")].map((i) => i.value);
@@ -1472,7 +1500,9 @@
       });
       const envRes = await api("/api/environment");
       consoleEnvLabel = envRes?.console?.label || target.toUpperCase();
+      consoleEnvSlug = (envRes?.console?.env || target || "stage").toLowerCase();
       renderWalkEnv(envRes);
+      renderDevicePick();
       currentRun = null;
       clearShopMarkers();
       el("shop-list").innerHTML = "";
@@ -1711,6 +1741,7 @@
         ]);
         envStatus = envRes;
         consoleEnvLabel = envRes?.console?.label || "STAGE";
+        consoleEnvSlug = (envRes?.console?.env || "stage").toLowerCase();
         renderWalkEnv(envRes);
         el("walk-env-btns").querySelectorAll("button").forEach((btn) => {
           btn.onclick = () => setConsoleTarget(btn.dataset.target);
