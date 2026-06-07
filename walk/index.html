@@ -28,7 +28,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260607083914" />
+  <meta name="walk-build" content="20260607084828" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -644,8 +644,10 @@
 
       <div id="scenario-run-actions">
         <div id="redeem-phone-block" hidden>
-          <label for="phone" class="form-label">Test redeem — which phone?</label>
-          <select id="phone"></select>
+          <div id="redeem-phone-picker">
+            <label for="phone" class="form-label">Test redeem — which phone?</label>
+            <select id="phone"></select>
+          </div>
           <p class="hint" id="phone-hint"></p>
         </div>
 
@@ -1313,7 +1315,7 @@
       }
 
       el("redeem-phone-block").hidden = false;
-      updatePhoneHint();
+      applyRedeemPhoneFromRun(run);
 
       const centre = run.center
         ? `${run.center.lat.toFixed(5)}, ${run.center.lng.toFixed(5)}`
@@ -1411,6 +1413,59 @@
       }
     }
 
+    function isHostedConsole() {
+      return typeof window.__hostedScenariosApi === "function";
+    }
+
+    function normalizePhone(p) {
+      return {
+        ...p,
+        app_id: p.app_id || (String(p.customer_app_id || "").trim() || null),
+        backend_env: p.backend_env || "stage",
+      };
+    }
+
+    function phonesForConsoleEnv(phones) {
+      return (phones || [])
+        .map(normalizePhone)
+        .filter((p) => p.backend_env === consoleEnvSlug);
+    }
+
+    function runCustomerPhones(run) {
+      const slots = new Set((run?.devices || []).map((d) => String(d.slot)));
+      return phonesForConsoleEnv(customerPhones).filter((p) => slots.has(String(p.slot)));
+    }
+
+    function setRedeemPhonePickerVisible(visible) {
+      const picker = el("redeem-phone-picker");
+      if (picker) picker.hidden = !visible;
+    }
+
+    function applyRedeemPhoneFromRun(run) {
+      const sel = el("phone");
+      if (!sel) return;
+      const fromRun = runCustomerPhones(run);
+      const pool = fromRun.length ? fromRun : phonesForConsoleEnv(customerPhones);
+      if (!pool.length) {
+        setRedeemPhonePickerVisible(true);
+        updatePhoneHint();
+        return;
+      }
+      const saved = localStorage.getItem(PHONE_SLOT_KEY);
+      const pick =
+        (saved && pool.some((p) => p.slot === saved) && saved) ||
+        pool.find((p) => p.app_id)?.slot ||
+        pool[0].slot;
+      sel.value = pick;
+      localStorage.setItem(PHONE_SLOT_KEY, pick);
+      if (fromRun.length === 1) {
+        setRedeemPhonePickerVisible(false);
+      } else {
+        setRedeemPhonePickerVisible(pool.length > 1);
+      }
+      updatePhoneHint(fromRun.length === 1 ? pool[0] : null);
+    }
+
     function selectedPhone() {
       const slot = el("phone").value;
       return customerPhones.find((p) => p.slot === slot) || null;
@@ -1424,13 +1479,18 @@
       return slot === "user" ? "FLASHSALE_USER_APP_ID" : "FLASHSALE_USER2_APP_ID";
     }
 
-    function updatePhoneHint() {
-      const phone = selectedPhone();
+    function updatePhoneHint(fixedPhone) {
+      const phone = fixedPhone || selectedPhone();
       if (!phone) return;
       const appId = resolveAppId(phone);
       if (appId) {
         el("phone-hint").textContent =
-          `${phone.name} is linked. Open that deal’s QR screen on the phone, then tap Redeem here.`;
+          `${phone.name} — open that offer’s QR on the phone, then tap Redeem on the map pin.`;
+        return;
+      }
+      if (isHostedConsole()) {
+        el("phone-hint").textContent =
+          `${phone.name} needs customer_app_id in Hoibo Admin devices.json, then rebuild GitHub Pages (build-walk-pages.sh). Copy app id from Deal alert test log on the phone.`;
         return;
       }
       el("phone-hint").textContent =
@@ -1438,10 +1498,11 @@
     }
 
     function fillPhones(phones) {
-      customerPhones = phones;
+      customerPhones = phones.map(normalizePhone);
+      const visible = phonesForConsoleEnv(customerPhones);
       const sel = el("phone");
       sel.innerHTML = "";
-      phones.forEach((p) => {
+      visible.forEach((p) => {
         const o = document.createElement("option");
         o.value = p.slot;
         o.textContent = p.name;
@@ -1449,17 +1510,20 @@
         sel.appendChild(o);
       });
       const saved = localStorage.getItem(PHONE_SLOT_KEY);
-      if (saved && phones.some((p) => p.slot === saved)) sel.value = saved;
+      if (saved && visible.some((p) => p.slot === saved)) sel.value = saved;
+      else if (visible.length) sel.value = visible[0].slot;
       sel.onchange = () => {
         localStorage.setItem(PHONE_SLOT_KEY, sel.value);
+        setRedeemPhonePickerVisible(true);
         updatePhoneHint();
       };
+      setRedeemPhonePickerVisible(visible.length > 1);
       updatePhoneHint();
 
       const logSel = el("log-phone");
       if (!logSel) return;
       logSel.innerHTML = "";
-      phones.forEach((p) => {
+      visible.forEach((p) => {
         if (!p.app_id) return;
         const o = document.createElement("option");
         o.value = p.app_id;
@@ -1730,6 +1794,11 @@
       clearShopMarkers();
       el("shop-list").innerHTML = "";
       el("redeem-phone-block").hidden = true;
+      setRedeemPhonePickerVisible(true);
+      try {
+        const phonesRes = await api("/api/scenarios/phones");
+        fillPhones(phonesRes.phones || []);
+      } catch (_) { /* keep prior list */ }
       updateRunButtons();
       await loadRunHistory();
       const loaded = await tryLoadActiveRun({ silent: true });

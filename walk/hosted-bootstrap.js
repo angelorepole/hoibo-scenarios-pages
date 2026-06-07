@@ -139,7 +139,17 @@
     }
     if (path === "/api/scenarios/phones") {
       const d = await window.__hostedScenariosApi("/api/scenarios/devices");
-      const phones = (d.devices || []).filter((x) => (x.roles || []).includes("customer"));
+      const phones = (d.devices || [])
+        .filter((x) => (x.roles || []).includes("customer"))
+        .filter((x) => (x.backend_env || "stage") === consoleEnv)
+        .map((x) => ({
+          slot: x.slot,
+          name: x.name,
+          device_id: x.id || x.device_id,
+          app_id: String(x.customer_app_id || x.app_id || "").trim() || null,
+          backend_env: x.backend_env || "stage",
+          roles: x.roles || ["customer"],
+        }));
       return { ok: true, phones };
     }
     if (path === "/api/scenarios/runs") {
