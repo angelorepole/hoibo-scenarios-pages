@@ -255,7 +255,35 @@
       color: var(--accent);
     }
 
+    .env-target-btns button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
 
+    .active-run-banner {
+      margin-bottom: 0.75rem;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      background: rgba(245, 146, 7, 0.08);
+    }
+
+    .active-run-banner h2 {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin: 0 0 0.25rem;
+      line-height: 1.35;
+    }
+
+    .active-run-banner .run-id {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    select:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
 
     .playbook {
       margin-top: 0.75rem;
@@ -570,14 +598,22 @@
   </div>
   <div class="layout">
     <aside class="panel">
-      <label for="category" class="form-label">Category</label>
-      <select id="category"></select>
-      <label for="preset" class="form-label">Scenario</label>
-      <select id="preset"></select>
-      <p class="hint" id="preset-desc"></p>
-      <p class="hint" id="preset-seed"></p>
+      <div id="scenario-picker-block">
+        <label for="category" class="form-label">Category</label>
+        <select id="category"></select>
+        <label for="preset" class="form-label">Scenario</label>
+        <select id="preset"></select>
+        <p class="hint" id="preset-desc"></p>
+        <p class="hint" id="preset-seed"></p>
+      </div>
+
+      <div class="active-run-banner" id="scenario-active-banner" hidden>
+        <h2 id="active-run-title">Active scenario</h2>
+        <p class="hint mb-0" id="active-run-meta"></p>
+      </div>
+
       <div class="playbook" id="playbook-preview" hidden>
-        <h3>Scenario steps &amp; validation</h3>
+        <h3 id="playbook-heading">Scenario steps &amp; validation</h3>
         <ol id="playbook-steps"></ol>
         <div class="expect" id="playbook-expect" hidden>
           <strong>Expected evidence (field log):</strong>
@@ -585,33 +621,38 @@
         </div>
       </div>
 
-      <label class="form-label">Walk centre</label>
-      <button type="button" class="btn btn-secondary" id="btn-gps">Use my location</button>
-      <p class="hint">Click or long-press the map to drop the orange centre dot. Shops use map pins inside the circle.
-      </p>
-      <div class="coords-row">
-        <div><label for="lat" class="form-label">Lat</label><input id="lat" type="number" step="any" readonly placeholder="—" /></div>
-        <div><label for="lng" class="form-label">Lng</label><input id="lng" type="number" step="any" readonly placeholder="—" /></div>
+      <div id="scenario-setup-block">
+        <label class="form-label">Walk centre</label>
+        <button type="button" class="btn btn-secondary" id="btn-gps">Use my location</button>
+        <p class="hint">Click or long-press the map to drop the orange centre dot. Shops use map pins inside the circle.
+        </p>
+        <div class="coords-row">
+          <div><label for="lat" class="form-label">Lat</label><input id="lat" type="number" step="any" readonly placeholder="—" /></div>
+          <div><label for="lng" class="form-label">Lng</label><input id="lng" type="number" step="any" readonly placeholder="—" /></div>
+        </div>
+
+        <label class="form-label">Devices for this run</label>
+        <div class="device-pick" id="device-pick">
+          <p class="hint">Loading devices…</p>
+        </div>
+        <p class="hint" id="device-pick-hint">Tick phones used (user + merchant). Saved in run log.</p>
+
+        <button type="button" class="btn btn-primary" id="btn-run" disabled>Run scenario</button>
+        <p class="hint" id="run-hint" hidden></p>
+        <button type="button" class="btn btn-secondary" id="btn-load-run">Load active run</button>
       </div>
 
-      <div id="redeem-phone-block" hidden>
-        <label for="phone" class="form-label">Test redeem — which phone?</label>
-        <select id="phone"></select>
-        <p class="hint" id="phone-hint"></p>
-      </div>
+      <div id="scenario-run-actions">
+        <div id="redeem-phone-block" hidden>
+          <label for="phone" class="form-label">Test redeem — which phone?</label>
+          <select id="phone"></select>
+          <p class="hint" id="phone-hint"></p>
+        </div>
 
-      <label class="form-label">Devices for this run</label>
-      <div class="device-pick" id="device-pick">
-        <p class="hint">Loading devices…</p>
+        <button type="button" class="btn btn-danger" id="btn-cleanup" disabled>Finish &amp; remove</button>
+        <button type="button" class="btn btn-secondary" id="btn-abandon" disabled hidden>Abandon run</button>
+        <p class="hint" id="cleanup-hint"></p>
       </div>
-      <p class="hint" id="device-pick-hint">Tick phones used (user + merchant). Saved in run log.</p>
-
-      <button type="button" class="btn btn-primary" id="btn-run" disabled>Run scenario</button>
-      <p class="hint" id="run-hint" hidden></p>
-      <button type="button" class="btn btn-secondary" id="btn-load-run">Load active run</button>
-      <button type="button" class="btn btn-danger" id="btn-cleanup" disabled>Finish &amp; remove</button>
-      <button type="button" class="btn btn-secondary" id="btn-abandon" disabled hidden>Abandon run</button>
-      <p class="hint" id="cleanup-hint"></p>
 
       <div class="status" id="status">Load presets…</div>
 
@@ -926,6 +967,91 @@
         : cleanupHintText(null);
     }
 
+    function syncPresetFromRun(run) {
+      if (!run) return;
+      const id = run.scenario_id || run.preset_id;
+      if (!id) return;
+      const match = scenarioList.find((s) => s.id === id);
+      const catSel = el("category");
+      const presetSel = el("preset");
+      if (!match || !catSel || !presetSel) return;
+      catSel.value = match.category || "intent";
+      presetSel.innerHTML = "";
+      scenarioList
+        .filter((p) => (p.category || "intent") === catSel.value)
+        .forEach((p) => {
+          const o = document.createElement("option");
+          o.value = p.id;
+          o.textContent = p.label;
+          presetSel.appendChild(o);
+        });
+      presetSel.value = id;
+    }
+
+    function updatePlaybookHeading() {
+      const heading = el("playbook-heading");
+      if (!heading) return;
+      if (!currentRun) {
+        heading.textContent = "Scenario steps & validation";
+        return;
+      }
+      const total = lastPlaybook.steps.length;
+      const passed = (playbookProgress || []).filter((p) => p.status === "pass").length;
+      const failed = (playbookProgress || []).filter((p) => p.status === "fail").length;
+      let line = `Progress — ${passed} of ${total} steps done`;
+      if (failed) line += ` · ${failed} need attention`;
+      heading.textContent = line;
+    }
+
+    function updateRunUiMode() {
+      const active = !!currentRun;
+      const picker = el("scenario-picker-block");
+      const setup = el("scenario-setup-block");
+      const banner = el("scenario-active-banner");
+      const actions = el("scenario-run-actions");
+      const history = el("run-history");
+      const categorySel = el("category");
+      const presetSel = el("preset");
+
+      if (picker) picker.hidden = active;
+      if (setup) setup.hidden = active;
+      if (actions) actions.hidden = !active;
+      if (banner) banner.hidden = !active;
+      if (history) history.hidden = active;
+
+      if (categorySel) categorySel.disabled = active || isSeeding;
+      if (presetSel) presetSel.disabled = active || isSeeding;
+
+      el("walk-env-btns")?.querySelectorAll("button").forEach((btn) => {
+        btn.disabled = active;
+      });
+
+      if (active && banner) {
+        const label =
+          currentRun.scenario_label ||
+          currentRun.preset_label ||
+          currentRun.scenario_id ||
+          "Scenario";
+        el("active-run-title").textContent = label;
+        const centre = currentRun.center
+          ? `${currentRun.center.lat.toFixed(5)}, ${currentRun.center.lng.toFixed(5)}`
+          : "—";
+        const devices = deviceNames(currentRun.devices);
+        el("active-run-meta").innerHTML =
+          `<span class="run-id">${currentRun.short_id || (currentRun.run_id || "").slice(0, 8)}</span>` +
+          ` · ${consoleEnvLabel} · ${devices}<br />Centre ${centre} · ${currentRun.radius_m || radiusM} m`;
+      }
+
+      const mapHint = el("map-hint");
+      if (mapHint) {
+        mapHint.textContent = active
+          ? "Active run — walk the pins · tap a shop for test redeem"
+          : "Min zoom = Greater London · tap map to set centre pin";
+      }
+
+      updatePlaybookHeading();
+    }
+
     function updateRunButtons() {
       const runBtn = el("btn-run");
       const cleanupBtn = el("btn-cleanup");
@@ -962,6 +1088,7 @@
         hint.textContent =
           "Before Run: fresh app install on ticked phones (Mac → refresh-stage-phones.sh or prod install). Run wipes the cloud DB only — not on-device memory.";
       }
+      updateRunUiMode();
     }
     const statusEl = el("status");
 
@@ -1041,6 +1168,7 @@
       window.addEventListener("resize", refreshMapSize);
 
       map.on("click", (e) => {
+        if (currentRun) return;
         if (suppressNextClick) {
           suppressNextClick = false;
           return;
@@ -1068,7 +1196,7 @@
         const t = e.touches[0];
         start = { x: t.clientX, y: t.clientY, px: map.mouseEventToContainerPoint(t) };
         timer = setTimeout(() => {
-          if (!start) return;
+          if (!start || currentRun) return;
           const latlng = map.containerPointToLatLng(start.px);
           const p = clampToLondon(latlng.lat, latlng.lng);
           suppressNextClick = true;
@@ -1133,6 +1261,7 @@
         return;
       }
       currentRun = run;
+      syncPresetFromRun(run);
       clearShopMarkers();
 
       const r = run.radius_m || radiusM;
@@ -1248,6 +1377,7 @@
         li.innerHTML = `${mark}<span class="who">${s.who || "Step"}</span> — ${s.do}${detail}`;
         ol.appendChild(li);
       });
+      updatePlaybookHeading();
     }
 
     function renderPlaybook(steps, expects, multiDay) {
@@ -1368,7 +1498,7 @@
         const entries = full.entries || full.document?.entries || [];
         el("log-json").value = JSON.stringify(entries, null, 2);
         const doc = full.document || {};
-        if (doc.scenario_id) {
+        if (doc.scenario_id && !currentRun) {
           const catSel = el("category");
           const presetSel = el("preset");
           const match = scenarioList.find((s) => s.id === doc.scenario_id);
