@@ -28,8 +28,8 @@
         "No “you’re driving” block in the log"
       ],
       "playbook": [
-        { "step": 1, "who": "Phone", "do": "Turn deal alerts on. Location and notifications must stay allowed.", "verify": "manual" },
-        { "step": 2, "who": "Setup", "do": "Set the walk centre on the map → Run scenario.", "verify": "run_seeded" },
+        { "step": 1, "who": "Phone", "do": "On Mac: fresh install for this phone (Dev Console → Real iPhones). Then deal alerts ON.", "verify": "manual" },
+        { "step": 2, "who": "Setup", "do": "Tick this phone under Prepare phones, set walk centre → Run scenario.", "verify": "run_seeded" },
         { "step": 3, "who": "Walk", "do": "Walk between pins (do not drive). Stay near a cluster for at least 5 minutes.", "verify": "field_near_shop_dwell" },
         { "step": 4, "who": "Phone", "do": "Refresh the feed while walking. Upload the test log after a few minutes.", "verify": "log_pasted" },
         { "step": 5, "who": "Verify", "do": "Load cloud log → Check log. Must pass.", "verify": "field_log_rules" },

@@ -28,7 +28,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260607095625" />
+  <meta name="walk-build" content="20260607095938" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -357,6 +357,48 @@
       opacity: 0.65;
     }
 
+    .phone-prep {
+      margin: 0.75rem 0;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .phone-prep h4 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin: 0 0 0.45rem;
+    }
+
+    .phone-prep-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      font-size: 0.78rem;
+      margin-bottom: 0.4rem;
+      line-height: 1.35;
+    }
+
+    .phone-prep-row input {
+      margin-top: 0.15rem;
+    }
+
+    .phone-prep-status {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 0.1rem;
+    }
+
+    .phone-prep-status.ok {
+      color: var(--success);
+    }
+
+    .phone-prep-status.warn {
+      color: var(--danger);
+    }
+
     .playbook .expect {
       margin-top: 0.5rem;
       padding-top: 0.5rem;
@@ -651,6 +693,13 @@
         </div>
         <p class="hint" id="device-pick-hint">Tick phones used (user + merchant). Saved in run log.</p>
 
+        <div class="phone-prep" id="phone-prep-block">
+          <h4>Prepare phones (required before Run)</h4>
+          <p class="hint mb-2">Each device needs a <strong>fresh install</strong> of the correct app for <strong id="phone-prep-env">STAGE</strong> — wiped clean, latest build. Run only seeds the cloud; it does not reset phones.</p>
+          <p class="hint mb-2">Do this on your Mac: <a href="http://127.0.0.1:8765/" target="_blank" rel="noopener noreferrer">Dev Console → Real iPhones</a> → fresh install for each device below.</p>
+          <div id="phone-prep-list"></div>
+        </div>
+
         <button type="button" class="btn btn-primary" id="btn-run" disabled>Run scenario</button>
         <p class="hint" id="run-hint" hidden></p>
       </div>
@@ -756,6 +805,7 @@
     let consoleEnvLabel = "STAGE";
     let consoleEnvSlug = "stage";
     let currentRun = null;
+    let deviceBuildState = null;
     let map;
     let centerMarker = null;
     let radiusCircle = null;
@@ -769,6 +819,7 @@
     let lastPlaybook = { steps: [], expects: [], multiDay: false };
 
     const DEVICES_PICK_KEY = "walk_scenario_device_slots";
+    const PHONE_PREP_KEY = "walk_scenario_phone_prep";
     /** Locked in every run for this env — iPad on Stage, AR14 on Prod. */
     const ALWAYS_ON_BY_ENV = {
       stage: ["merchant-ipad"],
@@ -853,6 +904,144 @@
       renderDevicePick();
     }
 
+    function phonePrepStorageKey() {
+      return `${PHONE_PREP_KEY}_${consoleEnvSlug}`;
+    }
+
+    function selectedDeviceSlotsForPrep() {
+      const locked = alwaysOnSlots();
+      const boxes = el("device-pick").querySelectorAll('input[type="checkbox"]:checked');
+      return [...new Set([...locked, ...[...boxes].map((b) => b.value)])];
+    }
+
+    function loadPhonePrepState() {
+      try {
+        return JSON.parse(sessionStorage.getItem(phonePrepStorageKey()) || "{}");
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function savePhonePrepState(state) {
+      sessionStorage.setItem(phonePrepStorageKey(), JSON.stringify(state));
+    }
+
+    function clearPhonePrepForSlots(removedSlots) {
+      const state = loadPhonePrepState();
+      removedSlots.forEach((s) => delete state[s]);
+      savePhonePrepState(state);
+    }
+
+    function deviceBuildStatusForSlot(slot) {
+      if (!deviceBuildState?.ok) return null;
+      return deviceBuildState.devices.find((d) => d.slot === slot) || null;
+    }
+
+    async function loadDeviceBuildsIfLocal() {
+      if (typeof window.__hostedScenariosApi === "function") return;
+      try {
+        const res = await fetch("/api/device-builds", { cache: "no-store" });
+        deviceBuildState = await res.json();
+      } catch (_) {
+        deviceBuildState = null;
+      }
+    }
+
+    function phonePrepStatusHtml(slot) {
+      const hit = deviceBuildStatusForSlot(slot);
+      if (!hit) return "";
+      if (!hit.configured) return "";
+      if (!hit.installed || hit.missing) {
+        return `<span class="phone-prep-status warn">Mac: app not installed — run fresh install</span>`;
+      }
+      if (hit.behind) {
+        return `<span class="phone-prep-status warn">Mac: ${hit.installed} installed — behind latest ${hit.latest}</span>`;
+      }
+      return `<span class="phone-prep-status ok">Mac: ${hit.installed} installed (latest)</span>`;
+    }
+
+    function renderPhonePrep() {
+      const block = el("phone-prep-block");
+      const list = el("phone-prep-list");
+      const envLabel = el("phone-prep-env");
+      if (envLabel) envLabel.textContent = consoleEnvLabel;
+      if (!block || !list) return;
+      if (currentRun) {
+        block.hidden = true;
+        return;
+      }
+      block.hidden = false;
+      const slots = selectedDeviceSlotsForPrep();
+      const state = loadPhonePrepState();
+      if (!slots.length) {
+        list.innerHTML = `<p class="hint mb-0">Tick at least one phone above.</p>`;
+        return;
+      }
+      list.innerHTML = slots
+        .map((slot) => {
+          const d = registryDevices.find((x) => String(x.slot) === String(slot));
+          const name = d?.name || slot;
+          const roles = (d?.roles || []).join(" + ") || "device";
+          const checked = state[slot] ? " checked" : "";
+          const status = phonePrepStatusHtml(slot);
+          return `<label class="phone-prep-row"><input type="checkbox" data-phone-prep="${slot}"${checked} /><span><strong>${name}</strong> (${roles})<br /><span class="hint">Fresh ${consoleEnvLabel} install — welcome screen on first open</span>${status}</span></label>`;
+        })
+        .join("");
+      list.querySelectorAll("input[data-phone-prep]").forEach((inp) => {
+        inp.onchange = () => {
+          const st = loadPhonePrepState();
+          if (inp.checked) st[inp.dataset.phonePrep] = true;
+          else delete st[inp.dataset.phonePrep];
+          savePhonePrepState(st);
+          updateRunButtons();
+        };
+      });
+      // Mac: auto-check when build verified
+      if (deviceBuildState?.ok) {
+        const st = loadPhonePrepState();
+        let changed = false;
+        slots.forEach((slot) => {
+          const hit = deviceBuildStatusForSlot(slot);
+          if (hit?.installed && !hit.behind && !hit.missing) {
+            if (!st[slot]) {
+              st[slot] = true;
+              changed = true;
+            }
+          }
+        });
+        if (changed) {
+          savePhonePrepState(st);
+          list.querySelectorAll("input[data-phone-prep]").forEach((inp) => {
+            if (st[inp.dataset.phonePrep]) inp.checked = true;
+          });
+        }
+      }
+    }
+
+    function phonesReadyForRun() {
+      const slots = selectedDeviceSlotsForPrep();
+      if (!slots.length) {
+        return { ok: false, reason: "Tick at least one phone for this run." };
+      }
+      const state = loadPhonePrepState();
+      if (!slots.every((s) => state[s])) {
+        return { ok: false, reason: "Confirm fresh install for every phone in Prepare phones." };
+      }
+      if (deviceBuildState?.ok) {
+        for (const slot of slots) {
+          const hit = deviceBuildStatusForSlot(slot);
+          if (hit?.configured && (hit.missing || hit.behind || !hit.installed)) {
+            const name = registryDevices.find((d) => d.slot === slot)?.name || slot;
+            return {
+              ok: false,
+              reason: `${name} — fresh install needed on Mac (missing or old build).`,
+            };
+          }
+        }
+      }
+      return { ok: true };
+    }
+
     function devicesForPicker() {
       return registryDevices.filter(
         (d) => (d.backend_env || "stage") === consoleEnvSlug,
@@ -890,13 +1079,22 @@
         consoleEnvSlug === "prod"
           ? "AR14 is always in Prod runs."
           : "iPad is always in Stage runs (merchant).";
-      hint.textContent = `${alwaysName} Tick customer phone(s) you reinstalled for this run. Saved in run log.`;
+      hint.textContent = `${alwaysName} Tick every phone used in this test.`;
       box.querySelectorAll("input:not(:disabled)").forEach((input) => {
         input.onchange = () => {
           persistOptionalDevicePick();
           syncRunDevices();
+          const slots = new Set(selectedDeviceSlotsForPrep());
+          const st = loadPhonePrepState();
+          Object.keys(st).forEach((s) => {
+            if (!slots.has(s)) delete st[s];
+          });
+          savePhonePrepState(st);
+          renderPhonePrep();
+          updateRunButtons();
         };
       });
+      renderPhonePrep();
     }
 
     function applyRunDevicesToPick(devices) {
@@ -1037,6 +1235,8 @@
       if (actions) actions.hidden = !active;
       if (banner) banner.hidden = !active;
       if (history) history.hidden = active;
+      const phonePrep = el("phone-prep-block");
+      if (phonePrep) phonePrep.hidden = active;
 
       if (categorySel) categorySel.disabled = active || isSeeding;
       if (presetSel) presetSel.disabled = active || isSeeding;
@@ -1089,7 +1289,7 @@
       runBtn.textContent = currentRun
         ? "Finish current run first"
         : `Run scenario on ${env} (wipes prior WALK·)`;
-      runBtn.disabled = !hasCenter || !!currentRun;
+      runBtn.disabled = !hasCenter || !!currentRun || !phonesReadyForRun().ok;
       cleanupBtn.disabled = !currentRun;
       if (abandonBtn) {
         abandonBtn.hidden = !currentRun;
@@ -1104,8 +1304,10 @@
           `Run ${currentRun.short_id} is live. Follow the playbook, then Finish & remove (or Abandon). You cannot start another until this one is closed.`;
       } else {
         hint.hidden = false;
-        hint.textContent =
-          "Run seeds test shops on the server at your map centre. Your phones are not changed — use Mac Dev Console → Real iPhones only if you need a clean install.";
+        const prep = phonesReadyForRun();
+        hint.textContent = prep.ok
+          ? `Phones prepared — Run seeds test shops on ${env} at your map centre.`
+          : prep.reason;
       }
       updateRunUiMode();
     }
@@ -1737,6 +1939,11 @@
         setStatus("Set centre pin first — tap map or GPS.", false);
         return;
       }
+      const prep = phonesReadyForRun();
+      if (!prep.ok) {
+        setStatus(prep.reason, false);
+        return;
+      }
       if (currentRun) {
         setStatus(
           `Run ${currentRun.short_id} is still open. Finish & remove (or Abandon) before starting a new scenario.`,
@@ -2078,6 +2285,8 @@
         radiusM = catalog.defaultRadiusM || 800;
         el("map-hint").textContent = `Min zoom ≈ Greater London · ${radiusM} m shop radius · console → ${consoleEnvLabel}`;
         fillPresets();
+
+        await loadDeviceBuildsIfLocal();
 
         const savedCenter = localStorage.getItem(CENTER_KEY);
         if (savedCenter) {
