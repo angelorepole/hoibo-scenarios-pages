@@ -4,6 +4,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body.walk-loading #env-strip,
+    body.walk-loading .layout {
+      display: none !important;
+    }
+  </style>
   <!-- Block indexing / crawling (search, AI, archival bots) -->
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, max-snippet:0, max-image-preview:none, max-video-preview:0">
   <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
@@ -28,7 +34,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260607103009" />
+  <meta name="walk-build" content="20260607110228" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -697,10 +703,84 @@
       padding: 1.25rem;
       overflow-y: auto;
     }
+
+    body.walk-loading #env-strip,
+    body.walk-loading .layout {
+      display: none !important;
+    }
+
+    .hosted-idle-hint {
+      padding: 0.75rem 0 1rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+
+    .hosted-idle-hint h3 {
+      margin: 0 0 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .walk-boot {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 50vh;
+      padding: 2rem 1.5rem;
+    }
+
+    .walk-boot[hidden] {
+      display: none !important;
+    }
+
+    .walk-boot-inner {
+      text-align: center;
+      max-width: 22rem;
+    }
+
+    .walk-boot-spinner {
+      width: 2.25rem;
+      height: 2.25rem;
+      margin: 0 auto 1rem;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: walk-boot-spin 0.75s linear infinite;
+    }
+
+    @keyframes walk-boot-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .walk-boot-step {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .walk-boot.walk-boot-err .walk-boot-spinner {
+      display: none;
+    }
+
+    .walk-boot.walk-boot-err .walk-boot-step {
+      color: #f87171;
+    }
+
+    .walk-boot-actions {
+      margin-top: 1rem;
+    }
+
+    .walk-boot-actions .btn {
+      width: auto;
+      padding: 0.45rem 1rem;
+    }
   </style>
 </head>
 
-<body>
+<body class="walk-loading">
   <header>
     <div class="brand-lockup">
       <img class="brand-logo" src="/hoibo-scenarios/assets/logo-orange.svg" alt="Hoibò" />
@@ -713,7 +793,7 @@
       <button type="button" class="btn btn-secondary font-sm mr-2" id="btn-open-log-modal" style="width: auto; padding: 0.35rem 0.75rem;">Add Phone Log</button>
     </nav>
   </header>
-  <div class="env-strip" id="env-strip">
+  <div class="env-strip" id="env-strip" hidden>
     <span>Console writes to</span>
     <span class="env-pill stage" id="walk-env-pill">…</span>
     <div class="env-target-btns" id="walk-env-btns">
@@ -723,8 +803,22 @@
     <span class="hint" id="walk-env-msg">Run state stored in Supabase Storage on this env.</span>
   </div>
   <div class="view-only-banner" id="view-only-banner" hidden></div>
-  <div class="layout">
+  <div class="walk-boot" id="walk-boot" aria-live="polite" aria-busy="true">
+    <div class="walk-boot-inner">
+      <div class="walk-boot-spinner" aria-hidden="true"></div>
+      <p class="walk-boot-step" id="walk-boot-step">Starting…</p>
+      <div class="walk-boot-actions" id="walk-boot-actions" hidden>
+        <button type="button" class="btn btn-secondary" id="walk-boot-continue">Continue anyway</button>
+      </div>
+    </div>
+  </div>
+  <div class="layout" id="walk-layout" hidden>
     <aside class="panel">
+      <div class="hosted-idle-hint" id="hosted-idle-hint" hidden>
+        <h3>No active run</h3>
+        <p class="hint mb-1">Start a scenario on the Mac Dev Console first, then refresh this page to see the map and playbook.</p>
+        <p class="hint mb-0">After a walk, use <strong>Add Phone Log</strong> (top right) to check your field log.</p>
+      </div>
       <div id="scenario-picker-block">
         <label for="category" class="form-label">Category</label>
         <select id="category"></select>
@@ -784,7 +878,7 @@
         <p class="hint" id="cleanup-hint"></p>
       </div>
 
-      <div class="status" id="status">Load presets…</div>
+      <div class="status idle" id="status"></div>
 
       <div class="run-history" id="run-history">
         <h3 id="run-history-heading" style="font-size:0.85rem;margin-bottom:0.5rem;">Run log</h3>
@@ -852,6 +946,36 @@
   <script>
     const el = (id) => document.getElementById(id);
     const statusEl = el("status");
+
+    function setBootStep(msg) {
+      const step = el("walk-boot-step");
+      if (step) step.textContent = msg;
+    }
+
+    function finishBoot() {
+      document.body.classList.remove("walk-loading");
+      const boot = el("walk-boot");
+      if (boot) {
+        boot.hidden = true;
+        boot.setAttribute("aria-busy", "false");
+      }
+      el("env-strip")?.removeAttribute("hidden");
+      el("walk-layout")?.removeAttribute("hidden");
+    }
+
+    function failBoot(msg) {
+      setBootStep(msg);
+      const boot = el("walk-boot");
+      if (boot) boot.classList.add("walk-boot-err");
+      const actions = el("walk-boot-actions");
+      if (actions) actions.hidden = false;
+      setStatus(msg, false);
+    }
+
+    el("walk-boot-continue")?.addEventListener("click", () => {
+      finishBoot();
+      refreshMapSize();
+    });
 
     (function () {
       const h = location.hostname;
@@ -1244,6 +1368,7 @@
       const categorySel = el("category");
       const presetSel = el("preset");
       const playbook = el("playbook-preview");
+      const idleHint = el("hosted-idle-hint");
 
       if (hosted && !active) {
         if (picker) picker.hidden = true;
@@ -1252,7 +1377,9 @@
         if (playbook) playbook.hidden = true;
         if (banner) banner.hidden = true;
         if (history) history.hidden = false;
+        if (idleHint) idleHint.hidden = false;
       } else {
+        if (idleHint) idleHint.hidden = true;
         if (picker) picker.hidden = active;
         if (setup) setup.hidden = active || hosted;
         if (actions) actions.hidden = !active;
@@ -2099,8 +2226,9 @@
       }
     }
 
-    async function tryLoadActiveRun({ silent = false } = {}) {
+    async function tryLoadActiveRun({ silent = false, onProgress = null } = {}) {
       try {
+        if (onProgress) onProgress("Checking for an active run…");
         const data = await api("/api/scenarios/runs");
         const runs = data.runs || [];
         if (!runs.length) {
@@ -2110,6 +2238,7 @@
           return false;
         }
         const pick = runs[0];
+        if (onProgress) onProgress("Restoring active run on the map…");
         const full = await api(`/api/scenarios/run/${pick.run_id}`);
         showRun(full.run);
         if (runs.length > 1 && !silent) {
@@ -2378,12 +2507,19 @@
     (async () => {
       initMap();
       try {
+        if (isHostedConsole()) {
+          setBootStep("Unlocking config (enter admin API key if prompted)…");
+        } else {
+          setBootStep("Connecting to dev console…");
+        }
         const [catalogRes, phonesRes, devicesRes, envRes] = await Promise.all([
           api("/api/scenarios/catalog"),
           api("/api/scenarios/phones"),
           api("/api/scenarios/devices").catch(() => ({ devices: [] })),
           api("/api/environment"),
         ]);
+
+        setBootStep("Loading scenario list…");
         envStatus = envRes;
         consoleEnvLabel = envRes?.console?.label || "STAGE";
         consoleEnvSlug = (envRes?.console?.env || "stage").toLowerCase();
@@ -2404,6 +2540,8 @@
             ? ScenarioDisplay.applyHumanCopy(s, copy)
             : s,
         );
+
+        setBootStep("Loading phones…");
         fillPhones(phonesRes.phones);
         registryDevices = devicesRes.devices || [];
         renderDevicePick();
@@ -2411,13 +2549,20 @@
         el("map-hint").textContent = `Min zoom ≈ Greater London · ${radiusM} m shop radius · console → ${consoleEnvLabel}`;
         fillPresets();
 
-        await loadDeviceBuildsIfLocal();
+        if (!isHostedConsole()) {
+          setBootStep("Checking app installs on phones…");
+          await loadDeviceBuildsIfLocal();
+        }
 
-        const loadedActive = await tryLoadActiveRun({ silent: true });
+        await tryLoadActiveRun({
+          silent: true,
+          onProgress: (msg) => setBootStep(msg),
+        });
         if (!currentRun) {
           if (canControlRuns()) {
             const savedCenter = localStorage.getItem(CENTER_KEY);
             if (savedCenter) {
+              setBootStep("Restoring your last map centre…");
               const c = JSON.parse(savedCenter);
               setCenter(c.lat, c.lng);
             }
@@ -2426,12 +2571,14 @@
           }
         }
 
-        setStatus("");
+        setBootStep("Loading run log…");
         updateRunButtons();
         await loadRunHistory();
+
+        finishBoot();
         refreshMapSize();
       } catch (e) {
-        setStatus(String(e.message || e), false);
+        failBoot(String(e.message || e));
       }
     })();
   </script>
