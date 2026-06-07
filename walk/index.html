@@ -28,7 +28,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260607101258" />
+  <meta name="walk-build" content="20260607102518" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -39,6 +39,12 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/hoibo-scenarios/static/css/console.css" />
   <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
     header nav a {
       color: var(--accent);
       text-decoration: none;
@@ -151,6 +157,42 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0.5rem;
+    }
+
+    .phone-rows {
+      margin-top: 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.45rem 0.6rem;
+      background: var(--surface);
+    }
+
+    .phone-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      column-gap: 0.45rem;
+      font-size: 0.84rem;
+      line-height: 1.3;
+      margin-bottom: 0.35rem;
+      cursor: pointer;
+    }
+
+    .phone-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .phone-row input {
+      margin: 0;
+    }
+
+    .phone-row-locked {
+      opacity: 0.95;
+    }
+
+    .phone-row .phone-warn {
+      color: #f0a0a0;
+      font-size: 0.72rem;
     }
 
     .device-pick {
@@ -654,7 +696,6 @@
     </div>
     <nav>
       <button type="button" class="btn btn-secondary font-sm mr-2" id="btn-open-log-modal" style="width: auto; padding: 0.35rem 0.75rem;">Add Phone Log</button>
-      
     </nav>
   </header>
   <div class="env-strip" id="env-strip">
@@ -704,17 +745,10 @@
           <div><label for="lng" class="form-label">Lng</label><input id="lng" type="number" step="any" readonly placeholder="—" /></div>
         </div>
 
-        <label class="form-label">Devices for this run</label>
-        <div class="device-pick" id="device-pick">
-          <p class="hint">Loading devices…</p>
-        </div>
-        <p class="hint" id="device-pick-hint">Tick phones used (user + merchant). Saved in run log.</p>
-
-        <div class="phone-prep" id="phone-prep-block">
-          <h4>Prepare phones (required before Run)</h4>
-          <p class="hint mb-2">Each device needs a <strong>fresh install</strong> of the correct app for <strong id="phone-prep-env">STAGE</strong> — wiped clean, latest build. Run only seeds the cloud; it does not reset phones.</p>
-          <p class="hint mb-2">Do this on your Mac: <a href="http://127.0.0.1:8765/" target="_blank" rel="noopener noreferrer">Dev Console → Real iPhones</a> → fresh install for each device below.</p>
-          <div id="phone-prep-list"></div>
+        <label class="form-label">Phones</label>
+        <p class="hint mb-1" id="phones-hint">Fresh install in <a href="http://127.0.0.1:8765/" target="_blank" rel="noopener noreferrer">Real iPhones</a>, then tick each phone in this test.</p>
+        <div class="phone-rows" id="phone-rows">
+          <p class="hint mb-0">Loading…</p>
         </div>
 
         <button type="button" class="btn btn-primary" id="btn-run" disabled>Run scenario</button>
@@ -889,8 +923,9 @@
     }
 
     function selectedDevices() {
-      const boxes = el("device-pick").querySelectorAll('input[type="checkbox"]:checked');
+      const boxes = el("phone-rows").querySelectorAll('input[data-phone-slot]:checked');
       const slots = new Set([...boxes].map((b) => b.value));
+      alwaysOnSlots().forEach((s) => slots.add(String(s)));
       return registryDevices.filter((d) => slots.has(String(d.slot)));
     }
 
@@ -916,7 +951,7 @@
 
     function persistOptionalDevicePick() {
       const locked = new Set(alwaysOnSlots());
-      const slots = [...el("device-pick").querySelectorAll("input:checked")]
+      const slots = [...el("phone-rows").querySelectorAll("input[data-phone-slot]:checked")]
         .map((i) => i.value)
         .filter((s) => !locked.has(String(s)));
       localStorage.setItem(devicePickStorageKey(), JSON.stringify(slots));
@@ -933,8 +968,10 @@
 
     function selectedDeviceSlotsForPrep() {
       const locked = alwaysOnSlots();
-      const boxes = el("device-pick").querySelectorAll('input[type="checkbox"]:checked');
-      return [...new Set([...locked, ...[...boxes].map((b) => b.value)])];
+      const optional = [...el("phone-rows").querySelectorAll("input[data-phone-slot]:checked")].map(
+        (b) => b.value,
+      );
+      return [...new Set([...locked, ...optional])];
     }
 
     function loadPhonePrepState() {
@@ -972,70 +1009,88 @@
 
     function phonePrepStatusHtml(slot) {
       const hit = deviceBuildStatusForSlot(slot);
-      if (!hit) return "";
-      if (!hit.configured) return "";
+      if (!hit?.configured) return "";
       if (!hit.installed || hit.missing) {
-        return `<span class="phone-prep-status warn">Mac: app not installed — run fresh install</span>`;
+        return `<span class="phone-warn">Not installed — fresh install in Real iPhones</span>`;
       }
       if (hit.behind) {
-        return `<span class="phone-prep-status warn">Mac: ${hit.installed} installed — behind latest ${hit.latest}</span>`;
+        return `<span class="phone-warn">Build ${hit.installed} — update to ${hit.latest}</span>`;
       }
-      return `<span class="phone-prep-status ok">Mac: ${hit.installed} installed (latest)</span>`;
+      return "";
     }
 
-    function renderPhonePrep() {
-      const block = el("phone-prep-block");
-      const list = el("phone-prep-list");
-      const envLabel = el("phone-prep-env");
-      if (envLabel) envLabel.textContent = consoleEnvLabel;
-      if (!block || !list) return;
-      if (currentRun) {
-        block.hidden = true;
+    function setPhonePrep(slot, ready) {
+      const st = loadPhonePrepState();
+      if (ready) st[slot] = true;
+      else delete st[slot];
+      savePhonePrepState(st);
+    }
+
+    function renderPhoneRows() {
+      const box = el("phone-rows");
+      const hint = el("phones-hint");
+      if (!box) return;
+      if (currentRun) return;
+      const visible = devicesForPicker();
+      if (!registryDevices.length) {
+        box.innerHTML = `<p class="hint mb-0">No devices.json</p>`;
         return;
       }
-      block.hidden = false;
-      const slots = selectedDeviceSlotsForPrep();
-      const state = loadPhonePrepState();
-      if (!slots.length) {
-        list.innerHTML = `<p class="hint mb-0">Tick at least one phone above.</p>`;
+      if (!visible.length) {
+        box.innerHTML = `<p class="hint mb-0">No phones for ${consoleEnvLabel}.</p>`;
         return;
       }
-      list.innerHTML = slots
-        .map((slot) => {
-          const d = registryDevices.find((x) => String(x.slot) === String(slot));
-          const name = d?.name || slot;
-          const roles = (d?.roles || []).join(" + ") || "device";
-          const checked = state[slot] ? " checked" : "";
-          const status = phonePrepStatusHtml(slot);
-          return `<label class="phone-prep-row"><input type="checkbox" data-phone-prep="${slot}"${checked} /><span><strong>${name}</strong> (${roles})<br /><span class="hint">Fresh ${consoleEnvLabel} install — welcome screen on first open</span>${status}</span></label>`;
+      const locked = new Set(alwaysOnSlots());
+      const saved = new Set(savedOptionalDeviceSlots());
+      const prep = loadPhonePrepState();
+      box.innerHTML = visible
+        .map((d) => {
+          const slot = String(d.slot);
+          const isLocked = locked.has(slot);
+          const warn = phonePrepStatusHtml(slot);
+          if (isLocked) {
+            const checked = prep[slot] ? " checked" : "";
+            return `<label class="phone-row phone-row-locked"><input type="checkbox" data-phone-prep="${slot}"${checked} /><span>${d.name}${warn ? `<br />${warn}` : ""}</span></label>`;
+          }
+          const checked = saved.has(slot) ? " checked" : "";
+          return `<label class="phone-row"><input type="checkbox" data-phone-slot="${slot}" value="${slot}"${checked} /><span>${d.name}${warn ? `<br />${warn}` : ""}</span></label>`;
         })
         .join("");
-      list.querySelectorAll("input[data-phone-prep]").forEach((inp) => {
+      if (hint) {
+        hint.hidden = false;
+      }
+      box.querySelectorAll("input[data-phone-prep]").forEach((inp) => {
         inp.onchange = () => {
-          const st = loadPhonePrepState();
-          if (inp.checked) st[inp.dataset.phonePrep] = true;
-          else delete st[inp.dataset.phonePrep];
-          savePhonePrepState(st);
+          setPhonePrep(inp.dataset.phonePrep, inp.checked);
           updateRunButtons();
         };
       });
-      // Mac: auto-check when build verified
+      box.querySelectorAll("input[data-phone-slot]").forEach((inp) => {
+        inp.onchange = () => {
+          persistOptionalDevicePick();
+          setPhonePrep(inp.value, inp.checked);
+          syncRunDevices();
+          updateRunButtons();
+        };
+      });
       if (deviceBuildState?.ok) {
-        const st = loadPhonePrepState();
         let changed = false;
-        slots.forEach((slot) => {
+        selectedDeviceSlotsForPrep().forEach((slot) => {
           const hit = deviceBuildStatusForSlot(slot);
           if (hit?.installed && !hit.behind && !hit.missing) {
-            if (!st[slot]) {
-              st[slot] = true;
+            if (!prep[slot]) {
+              prep[slot] = true;
               changed = true;
             }
           }
         });
         if (changed) {
-          savePhonePrepState(st);
-          list.querySelectorAll("input[data-phone-prep]").forEach((inp) => {
-            if (st[inp.dataset.phonePrep]) inp.checked = true;
+          savePhonePrepState(prep);
+          box.querySelectorAll("input[data-phone-prep]").forEach((inp) => {
+            if (prep[inp.dataset.phonePrep]) inp.checked = true;
+          });
+          box.querySelectorAll("input[data-phone-slot]").forEach((inp) => {
+            if (prep[inp.value]) inp.checked = inp.checked || prep[inp.value];
           });
         }
       }
@@ -1044,11 +1099,11 @@
     function phonesReadyForRun() {
       const slots = selectedDeviceSlotsForPrep();
       if (!slots.length) {
-        return { ok: false, reason: "Tick at least one phone for this run." };
+        return { ok: false, reason: "Tick at least one phone." };
       }
       const state = loadPhonePrepState();
       if (!slots.every((s) => state[s])) {
-        return { ok: false, reason: "Confirm fresh install for every phone in Prepare phones." };
+        return { ok: false, reason: "Confirm each ticked phone has a fresh install." };
       }
       if (deviceBuildState?.ok) {
         for (const slot of slots) {
@@ -1057,7 +1112,7 @@
             const name = registryDevices.find((d) => d.slot === slot)?.name || slot;
             return {
               ok: false,
-              reason: `${name} — fresh install needed on Mac (missing or old build).`,
+              reason: `${name} needs a fresh install in Real iPhones.`,
             };
           }
         }
@@ -1072,59 +1127,14 @@
     }
 
     function renderDevicePick() {
-      const box = el("device-pick");
-      const hint = el("device-pick-hint");
-      const visible = devicesForPicker();
-      if (!registryDevices.length) {
-        box.innerHTML = `<p class="hint">No devices.json — copy devices.json.example</p>`;
-        hint.textContent = "Tick phones used (user + merchant). Saved in run log.";
-        return;
-      }
-      if (!visible.length) {
-        box.innerHTML = `<p class="hint">No phones for ${consoleEnvLabel}. Add one in devices.json with backend_env "${consoleEnvSlug}".</p>`;
-        hint.textContent = `Showing ${consoleEnvLabel} phones only — switch env for other lanes.`;
-        return;
-      }
-      const locked = new Set(alwaysOnSlots());
-      const saved = new Set(savedOptionalDeviceSlots());
-      box.innerHTML = visible
-        .map((d) => {
-          const roles = (d.roles || []).join(" + ") || "device";
-          const slot = String(d.slot);
-          const isLocked = locked.has(slot);
-          const checked = isLocked || saved.has(slot) ? " checked" : "";
-          const disabled = isLocked ? " disabled" : "";
-          const labelClass = isLocked ? ' class="device-always"' : "";
-          return `<label${labelClass}><input type="checkbox" value="${d.slot}" data-device-slot="${d.slot}"${checked}${disabled} /><span>${d.name}<br /><span class="device-meta">${roles}${isLocked ? " · always in run" : ""}</span></span></label>`;
-        })
-        .join("");
-      const alwaysName =
-        consoleEnvSlug === "prod"
-          ? "AR14 is always in Prod runs."
-          : "iPad is always in Stage runs (merchant).";
-      hint.textContent = `${alwaysName} Tick every phone used in this test.`;
-      box.querySelectorAll("input:not(:disabled)").forEach((input) => {
-        input.onchange = () => {
-          persistOptionalDevicePick();
-          syncRunDevices();
-          const slots = new Set(selectedDeviceSlotsForPrep());
-          const st = loadPhonePrepState();
-          Object.keys(st).forEach((s) => {
-            if (!slots.has(s)) delete st[s];
-          });
-          savePhonePrepState(st);
-          renderPhonePrep();
-          updateRunButtons();
-        };
-      });
-      renderPhonePrep();
+      renderPhoneRows();
     }
 
     function applyRunDevicesToPick(devices) {
       const locked = new Set(alwaysOnSlots());
       const slots = new Set((devices || []).map((d) => String(d.slot)));
       locked.forEach((s) => slots.add(String(s)));
-      el("device-pick").querySelectorAll("input").forEach((input) => {
+      el("phone-rows").querySelectorAll("input[data-phone-slot]").forEach((input) => {
         input.checked = slots.has(input.value);
       });
       localStorage.setItem(
@@ -1272,8 +1282,10 @@
         if (playbook && !active) playbook.hidden = false;
       }
 
-      const phonePrep = el("phone-prep-block");
-      if (phonePrep) phonePrep.hidden = active || hosted;
+      const phoneRows = el("phone-rows");
+      if (phoneRows) phoneRows.hidden = active || hosted;
+      const phonesHint = el("phones-hint");
+      if (phonesHint) phonesHint.hidden = active || hosted;
 
       const runBtn = el("btn-run");
       const cleanupBtn = el("btn-cleanup");
@@ -1311,12 +1323,17 @@
 
       const mapHint = el("map-hint");
       if (mapHint) {
-        mapHint.textContent = active
-          ? "Active run — walk the pins · tap a shop for test redeem"
-          : "Min zoom = Greater London · tap map to set centre pin";
+        if (active) {
+          mapHint.textContent = "Active run — walk the pins · tap a shop for test redeem";
+        } else if (hosted) {
+          mapHint.textContent = "No active run — map fills when Mac starts a scenario.";
+        } else {
+          mapHint.textContent = "Min zoom = Greater London · tap map to set centre pin";
+        }
       }
 
       updatePlaybookHeading();
+      requestAnimationFrame(() => refreshMapSize());
     }
 
     function updateRunButtons() {
@@ -1364,7 +1381,7 @@
         hint.hidden = false;
         const prep = phonesReadyForRun();
         hint.textContent = prep.ok
-          ? `Phones prepared — Run seeds test shops on ${env} at your map centre.`
+          ? `Phones ready — Run seeds test shops on ${env}.`
           : prep.reason;
       }
       updateRunUiMode();
@@ -1494,6 +1511,25 @@
       container.addEventListener("touchcancel", clear, { passive: true });
     }
 
+    function clearDraftMapOverlays() {
+      if (centerMarker) {
+        map.removeLayer(centerMarker);
+        centerMarker = null;
+      }
+      if (radiusCircle) {
+        map.removeLayer(radiusCircle);
+        radiusCircle = null;
+      }
+      hasCenter = false;
+      if (el("lat")) el("lat").value = "";
+      if (el("lng")) el("lng").value = "";
+    }
+
+    function resetMapViewDefault() {
+      clearDraftMapOverlays();
+      map.setView([51.5074, -0.2214], 13);
+    }
+
     function drawRadiusCircle(lat, lng) {
       if (radiusCircle) map.removeLayer(radiusCircle);
       radiusCircle = L.circle([lat, lng], {
@@ -1511,7 +1547,9 @@
       hasCenter = true;
       el("lat").value = p.lat.toFixed(6);
       el("lng").value = p.lng.toFixed(6);
-      localStorage.setItem(CENTER_KEY, JSON.stringify({ lat: p.lat, lng: p.lng }));
+      if (!opts.skipPersist) {
+        localStorage.setItem(CENTER_KEY, JSON.stringify({ lat: p.lat, lng: p.lng }));
+      }
       updateRunButtons();
 
       if (centerMarker) map.removeLayer(centerMarker);
@@ -1724,10 +1762,13 @@
       }
       banner.hidden = false;
       banner.className = "view-only-banner";
+      const buildMeta = document.querySelector('meta[name="walk-build"]');
+      const buildTag = buildMeta ? ` · build ${buildMeta.content}` : "";
       banner.innerHTML =
         "View only — follow the active run, map, and log check. " +
         "<strong>Run</strong> and <strong>Finish</strong> need the Mac Dev Console " +
-        '(<a href="http://127.0.0.1:8765/walk/" target="_blank" rel="noopener noreferrer">127.0.0.1:8765/walk</a>).';
+        '(<a href="http://127.0.0.1:8765/walk/" target="_blank" rel="noopener noreferrer">127.0.0.1:8765/walk</a>).' +
+        buildTag;
     }
 
     function normalizePhone(p) {
@@ -2120,6 +2161,7 @@
       updateRunButtons();
       await loadRunHistory();
       const loaded = await tryLoadActiveRun({ silent: true });
+      if (!loaded && !canControlRuns()) resetMapViewDefault();
       setStatus(
         loaded
           ? `Console target → ${consoleEnvLabel}. Active run loaded.`
@@ -2387,13 +2429,19 @@
 
         await loadDeviceBuildsIfLocal();
 
-        const savedCenter = localStorage.getItem(CENTER_KEY);
-        if (savedCenter) {
-          const c = JSON.parse(savedCenter);
-          setCenter(c.lat, c.lng);
+        const loadedActive = await tryLoadActiveRun({ silent: true });
+        if (!currentRun) {
+          if (canControlRuns()) {
+            const savedCenter = localStorage.getItem(CENTER_KEY);
+            if (savedCenter) {
+              const c = JSON.parse(savedCenter);
+              setCenter(c.lat, c.lng);
+            }
+          } else {
+            resetMapViewDefault();
+          }
         }
 
-        const loadedActive = await tryLoadActiveRun({ silent: true });
         setStatus(
           canControlRuns()
             ? `Pick scenario → prepare phones → Run on ${consoleEnvLabel}.`
