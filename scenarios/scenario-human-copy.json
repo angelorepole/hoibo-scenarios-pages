@@ -160,6 +160,54 @@
         "Repeat within block window suppressed appropriately"
       ],
       "cleanupWhen": "After log check passes, Finish & remove."
+    },
+    "real-outing-walk": {
+      "purpose": "Walking away from home for 5+ minutes should count as a real outing.",
+      "summary": "12 shops. Walk beyond your learned home radius.",
+      "passCriteria": ["realOuting=true while walking"],
+      "cleanupWhen": "After log check passes, Finish & remove."
+    },
+    "visit-wake": {
+      "purpose": "Background visit/geofence should update memory without opening the app.",
+      "summary": "Dwell 5–15 min at a pin with app backgrounded.",
+      "passCriteria": ["wakeSource=visit OR learned slot strength ≥ 0.5"],
+      "cleanupWhen": "After log check passes, Finish & remove."
+    },
+    "defer-retry": {
+      "purpose": "Defer band should re-score after ~3 min stationary.",
+      "summary": "Walk near shops, then stand still — look for defer wake.",
+      "passCriteria": ["wakeSource=defer in log"],
+      "cleanupWhen": "After log check passes, Finish & remove."
+    },
+    "activity-wake": {
+      "purpose": "Walk→drive while backgrounded should wake the engine.",
+      "summary": "Transition on foot to car without opening the app.",
+      "passCriteria": ["wakeSource=activity"],
+      "cleanupWhen": "After log check passes, Finish & remove."
+    },
+    "wifi-anchor-hint": {
+      "purpose": "Known home/office Wi‑Fi should strengthen anchor hints.",
+      "summary": "At learned home — leave on foot or arrive on known Wi‑Fi.",
+      "passCriteria": ["wifiHint matched or departure"],
+      "cleanupWhen": "After log check passes, Finish & remove."
+    },
+    "car-to-walk": {
+      "purpose": "Park and walk shortly after driving should log carToWalk.",
+      "summary": "Drive to car park, walk to shops within 15 min.",
+      "passCriteria": ["carToWalk=true"],
+      "cleanupWhen": "After log check passes, Finish & remove."
+    },
+    "anchor-opportunity-ring": {
+      "purpose": "Near learned home with offers in the notification ring.",
+      "summary": "Seed shops within ring of your home anchor.",
+      "passCriteria": ["insideRingFromAnchor=true"],
+      "cleanupWhen": "After log check passes, Finish & remove."
+    },
+    "commute-corridor": {
+      "purpose": "Repeat weekday commute learns station clusters and on-time corridor.",
+      "summary": "Multi-day commute; walk route on weekday in usual window.",
+      "passCriteria": ["onRouteOnTime or nearStationCluster"],
+      "cleanupWhen": "After log check passes, Finish & remove."
     }
   }
 }

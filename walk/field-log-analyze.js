@@ -1,17 +1,29 @@
 /** Deal alert test log analysis — browser (mirrors field_log_analyzer.py). */
 (function (global) {
-  function parseFieldLog(raw) {
+  function parseFieldLogUpload(raw) {
     if (Array.isArray(raw)) {
-      return raw.filter((e) => e && typeof e === "object");
+      return { entries: raw.filter((e) => e && typeof e === "object") };
+    }
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      if (Array.isArray(raw.entries)) {
+        return {
+          entries: raw.entries.filter((e) => e && typeof e === "object"),
+          memory_trace: raw.memory_trace,
+          scenario_id: raw.scenario_id,
+          run_id: raw.run_id,
+        };
+      }
+      if ("opportunitySum" in raw || "gateDecision" in raw) {
+        return { entries: [raw] };
+      }
     }
     const text = String(raw || "").trim();
     if (!text) throw new Error("Paste field log JSON from the phone");
-    let data = JSON.parse(text);
-    if (data && typeof data === "object" && !Array.isArray(data) && data.entries) {
-      data = data.entries;
-    }
-    if (!Array.isArray(data)) throw new Error("Expected a JSON array of log entries");
-    return data.filter((e) => e && typeof e === "object");
+    return parseFieldLogUpload(JSON.parse(text));
+  }
+
+  function parseFieldLog(raw) {
+    return parseFieldLogUpload(raw).entries;
   }
 
   function entryMatches(entry, rule) {
@@ -21,7 +33,10 @@
     if ("opportunitySumGt" in rule && !(opp > Number(rule.opportunitySumGt))) return false;
     if ("opportunitySumGte" in rule && !(opp >= Number(rule.opportunitySumGte))) return false;
 
-    for (const key of ["gateDecision", "suppressReason", "hardSuppressRule", "activity", "planStyle"]) {
+    for (const key of [
+      "gateDecision", "suppressReason", "hardSuppressRule", "activity", "planStyle",
+      "wakeSource", "placeKind", "slotKind", "wifiHint", "lunchWindow", "mealCorridor",
+    ]) {
       if (!(key in rule)) continue;
       const expected = rule[key];
       const actual = entry[key];
@@ -33,9 +48,20 @@
     if ("activityIn" in rule && !rule.activityIn.includes(entry.activity)) return false;
     if ("activityNotIn" in rule && rule.activityNotIn.includes(entry.activity)) return false;
 
-    for (const boolKey of ["surfaced", "wouldDeliver", "stochasticSend"]) {
+    for (const boolKey of [
+      "surfaced", "wouldDeliver", "stochasticSend", "realOuting", "inLunchWindow",
+      "onRouteOnTime", "nearStationCluster", "carToWalk", "insideRingFromAnchor",
+      "anchorEnter", "anchorExit", "memoryColdStart",
+    ]) {
       if (!(boolKey in rule)) continue;
       if (Boolean(entry[boolKey]) !== Boolean(rule[boolKey])) return false;
+    }
+
+    if ("intentScoreGte" in rule && Number(entry.intentScore || 0) < Number(rule.intentScoreGte)) {
+      return false;
+    }
+    if ("slotStrengthGte" in rule && Number(entry.slotStrength || 0) < Number(rule.slotStrengthGte)) {
+      return false;
     }
 
     if ("notificationSummaryExcludes" in rule) {
@@ -114,6 +140,18 @@ ${logJson}
 Be concise. Plain English.`;
   }
 
+  function engineApi() {
+    if (!global.FieldLogEngine) {
+      throw new Error("field-log-engine.js not loaded");
+    }
+    return global.FieldLogEngine;
+  }
+
+  function evaluateEngineRules(entries, scenarioId, customRules, orGroups) {
+    const api = engineApi();
+    return api.evaluateEngineRules(entries, scenarioId, customRules, orGroups);
+  }
+
   function runIdsMatch(expected, uploaded) {
     const exp = String(expected || "").trim();
     const up = String(uploaded || "").trim();
@@ -172,7 +210,9 @@ Be concise. Plain English.`;
   function analyzeFieldLog(scenario, log, runMeta, options) {
     if (!scenario?.id) throw new Error("scenario required");
     const opts = options || {};
-    const entries = parseFieldLog(log);
+    const upload = parseFieldLogUpload(log);
+    const entries = upload.entries;
+    const memoryTrace = upload.memory_trace;
     const rules = scenario.fieldLogRules || {};
     const minEntries = Number(rules.minEntries ?? 1);
     const checks = [];
@@ -229,6 +269,28 @@ Be concise. Plain English.`;
       checks.push({ id: "manual", pass: null, detail: note });
     });
 
+    const orGroups =
+      rules.enginePassIfAny ||
+      scenario.enginePassIfAny ||
+      engineApi().WALK_ENGINE_PASS_IF_ANY[scenario.id];
+    for (const engine of evaluateEngineRules(
+      entries,
+      scenario.id,
+      scenario.fieldLogEngineRules,
+      orGroups,
+    )) {
+      checks.push(engine);
+      if (engine.pass === false) failed = true;
+    }
+
+    for (const mem of engineApi().evaluateMemoryTraceRules(
+      memoryTrace && typeof memoryTrace === "object" ? memoryTrace : null,
+      rules.memoryTraceRules || [],
+    )) {
+      checks.push(mem);
+      if (mem.pass === false) failed = true;
+    }
+
     return {
       ok: !failed,
       scenarioId: scenario.id,
@@ -242,5 +304,14 @@ Be concise. Plain English.`;
     };
   }
 
-  global.ScenarioFieldLog = { parseFieldLog, analyzeFieldLog, buildLlmReviewPrompt };
+  global.ScenarioFieldLog = {
+    parseFieldLog,
+    parseFieldLogUpload,
+    analyzeFieldLog,
+    buildLlmReviewPrompt,
+    evaluateEngineRules,
+    get WALK_FIELD_LOG_RULES() {
+      return engineApi().WALK_FIELD_LOG_RULES;
+    },
+  };
 })(typeof globalThis !== "undefined" ? globalThis : window);
