@@ -34,7 +34,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260608153541" />
+  <meta name="walk-build" content="20260608172807" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -201,6 +201,11 @@
       font-size: 0.72rem;
     }
 
+    .phone-row .phone-ok {
+      color: #8fd4a8;
+      font-size: 0.72rem;
+    }
+
     .phone-row-locked input:disabled {
       opacity: 1;
       cursor: default;
@@ -307,7 +312,23 @@
 
     .run-history .tag.pass { border-color: var(--success); color: var(--success); }
     .run-history .tag.fail { border-color: var(--danger); color: var(--danger); }
+    .run-history .tag.aborted { border-color: var(--muted); color: var(--muted); }
     .run-history .tag.progress { border-color: var(--accent); color: var(--accent); }
+    .run-history .run-del {
+      font-size: 0.68rem;
+      padding: 0.15rem 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      width: auto;
+      margin-top: 0.2rem;
+    }
+    .run-history .run-del:hover {
+      color: var(--danger);
+      border-color: var(--danger);
+    }
 
     .env-strip {
       display: flex;
@@ -728,6 +749,63 @@
       padding: 1.25rem;
       overflow-y: auto;
     }
+    .modal-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .finish-run-log-status {
+      font-size: 0.85rem;
+      margin: 0 0 1rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .finish-run-log-status.pass { border-color: var(--success); color: var(--success); }
+    .finish-run-log-status.fail { border-color: var(--danger); color: var(--danger); }
+    .finish-run-log-status.pending { color: var(--muted); }
+    .finish-run-hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 0.75rem;
+      line-height: 1.45;
+    }
+    .finish-run-warn {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 0.75rem 0 0;
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .confirm-map-facts {
+      margin: 0;
+      display: grid;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .confirm-map-facts > div {
+      display: grid;
+      grid-template-columns: 5.5rem 1fr;
+      gap: 0.5rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .confirm-map-facts dt {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .confirm-map-facts dd {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.8rem;
+    }
 
     body.walk-loading #env-strip,
     body.walk-loading .layout {
@@ -967,6 +1045,50 @@
     </div>
   </div>
 
+  <!-- Confirm walk centre before run -->
+  <div class="modal-overlay" id="confirm-map-modal" hidden>
+    <div class="modal-content" role="dialog" aria-labelledby="confirm-map-title" aria-modal="true">
+      <header class="modal-header">
+        <h2 id="confirm-map-title">Confirm walk circle</h2>
+        <button type="button" class="modal-close" id="btn-close-confirm-map" aria-label="Close">&times;</button>
+      </header>
+      <div class="modal-body">
+        <p class="finish-run-hint">Shops seed <strong>inside the orange dashed circle</strong> on the map. Check it covers the area you will walk — wrong centre wastes the run.</p>
+        <dl class="confirm-map-facts">
+          <div><dt>Scenario</dt><dd id="confirm-map-scenario">—</dd></div>
+          <div><dt>Centre</dt><dd id="confirm-map-coords">—</dd></div>
+          <div><dt>Radius</dt><dd id="confirm-map-radius">—</dd></div>
+          <div><dt>Phones</dt><dd id="confirm-map-phones">—</dd></div>
+        </dl>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-confirm-map-cancel" style="width: auto;">Back — adjust map</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-map-run" style="width: auto;">Circle is correct — run</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Finish run modal -->
+  <div class="modal-overlay" id="finish-run-modal" hidden>
+    <div class="modal-content" role="dialog" aria-labelledby="finish-run-title" aria-modal="true">
+      <header class="modal-header">
+        <h2 id="finish-run-title">Finish run</h2>
+        <button type="button" class="modal-close" id="btn-close-finish-modal" aria-label="Close">&times;</button>
+      </header>
+      <div class="modal-body">
+        <p class="finish-run-hint" id="finish-run-subtitle">Add quick notes if anything odd happened, then archive. Pass/fail comes from <strong>Check log</strong> when you ran it — not from this form.</p>
+        <p class="finish-run-log-status" id="finish-run-log-status" hidden></p>
+        <label for="finish-run-notes" class="form-label">Notes <span class="status-meta">(optional)</span></label>
+        <textarea id="finish-run-notes" rows="3" placeholder="e.g. skipped step 1 · accidentally redeemed twice · phone locked"></textarea>
+        <p class="finish-run-warn" id="finish-run-warn"></p>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-finish-cancel" style="width: auto;">Cancel</button>
+        <button type="button" class="btn btn-danger" id="btn-finish-confirm" style="width: auto;">Finish &amp; archive</button>
+      </footer>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="scenario-display.js"></script>
   <script src="field-log-engine.js"></script>
@@ -1082,6 +1204,7 @@
       if (out === "pass") return '<span class="tag pass">pass</span>';
       if (out === "fail") return '<span class="tag fail">fail</span>';
       if (out === "partial") return '<span class="tag">partial</span>';
+      if (out === "aborted") return '<span class="tag aborted">aborted</span>';
       if (st === "completed") return '<span class="tag pass">done</span>';
       if (st === "abandoned") return '<span class="tag fail">abandoned</span>';
       if (st === "superseded") return '<span class="tag">superseded</span>';
@@ -1182,13 +1305,16 @@
     function phonePrepStatusHtml(slot) {
       const hit = deviceBuildStatusForSlot(slot);
       if (!hit?.configured) return "";
-      if (!hit.installed || hit.missing) {
-        return `<span class="phone-warn">Not installed — fresh install in Real iPhones</span>`;
+      if (hit.check_failed) {
+        return `<span class="phone-warn">Couldn't check app — unlock phone and keep USB connected</span>`;
+      }
+      if (hit.missing) {
+        return `<span class="phone-warn">App not on device — Run will install it</span>`;
       }
       if (hit.behind) {
-        return `<span class="phone-warn">Build ${hit.installed} — update to ${hit.latest}</span>`;
+        return `<span class="phone-warn">Out of date</span>`;
       }
-      return "";
+      return `<span class="phone-ok">Up to date (${hit.installed})</span>`;
     }
 
     function setPhonePrep(slot, ready) {
@@ -1325,18 +1451,48 @@
             const dur = formatDuration(r.duration_seconds);
             const when = `${formatWhen(r.started_at)}${dur ? ` · ${dur}` : ""}`;
             const label = r.scenario_label || r.scenario_id || "—";
+            const rid = r.run_id || "";
+            const canDelete =
+              r.status !== "in_progress" && rid && rid !== currentRun?.run_id;
+            const delBtn = canDelete
+              ? `<button type="button" class="run-del" data-run-id="${rid}" title="Remove from log">Remove</button>`
+              : "";
             return `<tr>
-              <td>${when}<br /><span class="hint">${r.short_id || (r.run_id || "").slice(0, 8)}</span></td>
+              <td>${when}<br /><span class="hint">${r.short_id || rid.slice(0, 8)}</span></td>
               <td>${label}</td>
               <td>${deviceNames(r.devices)}</td>
-              <td>${statusTag(r)}</td>
+              <td>${statusTag(r)}${delBtn}</td>
             </tr>`;
           })
           .join("");
+        body.querySelectorAll(".run-del").forEach((btn) => {
+          btn.onclick = () => deleteHistoryRun(btn.dataset.runId);
+        });
       } catch (e) {
         empty.hidden = false;
         empty.textContent = `Could not load run log for ${consoleEnvLabel}.`;
         setStatus(String(e.message || e), false);
+      }
+    }
+
+    async function deleteHistoryRun(runId) {
+      if (!runId || !canControlRuns()) return;
+      if (!confirm("Remove this run from the log? (Archived copy in cloud storage is deleted.)")) return;
+      try {
+        await api("/api/scenarios/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ run_id: runId, delete_log_only: true }),
+        });
+        setStatus("Run removed from log.", true);
+        await loadRunHistory();
+      } catch (e) {
+        const msg = String(e.message || e);
+        if (msg.includes("404")) {
+          setStatus("Remove failed — restart Dev Console (server.py) and try again.", false);
+        } else {
+          setStatus(msg, false);
+        }
       }
     }
 
@@ -1522,7 +1678,7 @@
         hint.hidden = false;
         const prep = phonesReadyForRun();
         hint.textContent = prep.ok
-          ? `Ready — Run fresh-installs ticked phones (walk-test + field log), then seeds ${env}.`
+          ? `Ready — confirm the orange circle on the map, then Run (fresh-install + seed on ${env}).`
           : prep.reason;
       }
       updateRunUiMode();
@@ -2222,6 +2378,34 @@
       return typed === "PROD";
     }
 
+    let pendingRunBody = null;
+
+    function openConfirmMapModal(deviceList) {
+      const lat = parseFloat(el("lat").value);
+      const lng = parseFloat(el("lng").value);
+      const presetSel = el("preset");
+      const scenarioLabel =
+        presetSel?.options[presetSel.selectedIndex]?.textContent?.trim() || presetSel?.value || "—";
+      const coords = el("confirm-map-coords");
+      const radius = el("confirm-map-radius");
+      const phones = el("confirm-map-phones");
+      const scenario = el("confirm-map-scenario");
+      if (scenario) scenario.textContent = scenarioLabel;
+      if (coords) coords.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      if (radius) radius.textContent = `${radiusM} m`;
+      if (phones) phones.textContent = deviceList.map((d) => d.name || d.slot).join(", ") || "—";
+      if (map && radiusCircle) {
+        map.fitBounds(radiusCircle.getBounds(), { padding: [32, 32], maxZoom: 16 });
+      }
+      const modal = el("confirm-map-modal");
+      if (modal) modal.hidden = false;
+    }
+
+    function closeConfirmMapModal() {
+      const modal = el("confirm-map-modal");
+      if (modal) modal.hidden = true;
+    }
+
     async function runScenario() {
       if (!canControlRuns()) {
         setStatus("Run is Mac-only — open Dev Console → Walk scenarios.", false);
@@ -2249,8 +2433,7 @@
       }
       renderDevicePick();
       const deviceList = selectedDevices();
-      runProgressLabel = deviceList.map((d) => d.name || d.slot).join(", ");
-      const body = {
+      pendingRunBody = {
         preset_id: el("preset").value,
         lat: parseFloat(el("lat").value),
         lng: parseFloat(el("lng").value),
@@ -2258,12 +2441,21 @@
         confirm_prod: consoleEnvLabel === "PROD",
         devices: deviceList,
       };
+      openConfirmMapModal(deviceList);
+    }
+
+    async function executeRunScenario() {
+      if (!pendingRunBody) return;
+      const body = pendingRunBody;
+      pendingRunBody = null;
+      closeConfirmMapModal();
+      runProgressLabel = (body.devices || []).map((d) => d.name || d.slot).join(", ");
       isSeeding = true;
       updateRunButtons();
       try {
         setRunProgress(
-          `${runProgressLabel} — delete old app, install fresh walk-test build (Deal alert test log). Then wipe WALK· shops and seed on ${consoleEnvLabel}. This can take several minutes — keep phones unlocked.`,
-          "Step 1 — Reset phones (fresh install)",
+          `Mac is installing fresh apps on ${runProgressLabel} and seeding test shops on ${consoleEnvLabel}. This takes a few minutes — keep those devices unlocked.`,
+          "Setting up your run…",
         );
         const data = await api("/api/scenarios/run", {
           method: "POST",
@@ -2372,28 +2564,77 @@
       }
     }
 
-    async function cleanupRun() {
+    function resolveFinishOutcomeFromLog() {
+      if (lastAnalysis?.ok === true) return "pass";
+      if (lastAnalysis?.ok === false) return "fail";
+      return undefined;
+    }
+
+    function paintFinishRunLogStatus() {
+      const box = el("finish-run-log-status");
+      if (!box) return;
+      const outcome = resolveFinishOutcomeFromLog();
+      box.hidden = false;
+      if (outcome === "pass") {
+        box.className = "finish-run-log-status pass";
+        box.textContent = "Check log: pass — will be saved on archive.";
+      } else if (outcome === "fail") {
+        box.className = "finish-run-log-status fail";
+        box.textContent = "Check log: fail — will be saved on archive.";
+      } else {
+        box.className = "finish-run-log-status pending";
+        box.textContent = "No Check log yet — archive without pass/fail (run Check log first if you want that).";
+      }
+    }
+
+    function openFinishRunModal() {
+      if (!currentRun) return;
+      const modal = el("finish-run-modal");
+      const notes = el("finish-run-notes");
+      const warn = el("finish-run-warn");
+      if (notes) notes.value = "";
+      paintFinishRunLogStatus();
+      if (warn) {
+        warn.innerHTML =
+          `<strong>Run ${currentRun.short_id}</strong> on ${consoleEnvLabel}:<br>` +
+          `• <strong>Remove</strong> — deletes seeded WALK· shops/offers from ${consoleEnvLabel} DB; clears map &amp; active run.<br>` +
+          `• <strong>Archive</strong> — keeps notes, devices &amp; Check log result in Run log.<br>` +
+          `Does not reset phones — use a new Run for fresh installs.`;
+      }
+      if (modal) modal.hidden = false;
+    }
+
+    function closeFinishRunModal() {
+      const modal = el("finish-run-modal");
+      if (modal) modal.hidden = true;
+    }
+
+    function cleanupRun() {
       if (!canControlRuns()) {
         setStatus("Finish is Mac-only — open Dev Console → Walk scenarios.", false);
         return;
       }
-      if (!currentRun) { setStatus("Nothing to remove.", false); return; }
-      const outcomeRaw = prompt(
-        "Finish run — outcome?\n\npass · fail · partial · (blank = unknown)",
-        lastAnalysis?.ok === true ? "pass" : lastAnalysis?.ok === false ? "fail" : ""
-      );
-      if (outcomeRaw === null) return;
-      const outcome = ["pass", "fail", "partial"].includes(outcomeRaw.trim().toLowerCase())
-        ? outcomeRaw.trim().toLowerCase()
-        : undefined;
-      const notes = prompt("Notes (optional — weather, blockers, device quirks)") || undefined;
-      if (!confirm(`Remove scenario ${currentRun.short_id} from ${consoleEnvLabel} and archive run log?`)) return;
+      if (!currentRun) {
+        setStatus("Nothing to remove.", false);
+        return;
+      }
+      openFinishRunModal();
+    }
+
+    async function submitFinishRun() {
+      if (!currentRun) return;
+      const notesEl = el("finish-run-notes");
+      const notes = notesEl?.value?.trim() || undefined;
+      const outcome = resolveFinishOutcomeFromLog();
+      const confirmBtn = el("btn-finish-confirm");
+      if (confirmBtn) confirmBtn.disabled = true;
       try {
         await api("/api/scenarios/cleanup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ run_id: currentRun.run_id, outcome, notes }),
         });
+        closeFinishRunModal();
         currentRun = null;
         clearShopMarkers();
         el("shop-list").innerHTML = "";
@@ -2405,6 +2646,8 @@
         await loadRunHistory();
       } catch (e) {
         setStatus(String(e.message || e), false);
+      } finally {
+        if (confirmBtn) confirmBtn.disabled = false;
       }
     }
 
@@ -2578,6 +2821,22 @@
         logModal.hidden = true;
       }
     };
+
+    const confirmMapModal = el("confirm-map-modal");
+    el("btn-close-confirm-map").onclick = closeConfirmMapModal;
+    el("btn-confirm-map-cancel").onclick = closeConfirmMapModal;
+    el("btn-confirm-map-run").onclick = () => executeRunScenario();
+    confirmMapModal?.addEventListener("click", (e) => {
+      if (e.target === confirmMapModal) closeConfirmMapModal();
+    });
+
+    const finishRunModal = el("finish-run-modal");
+    el("btn-close-finish-modal").onclick = closeFinishRunModal;
+    el("btn-finish-cancel").onclick = closeFinishRunModal;
+    el("btn-finish-confirm").onclick = () => submitFinishRun();
+    finishRunModal?.addEventListener("click", (e) => {
+      if (e.target === finishRunModal) closeFinishRunModal();
+    });
 
     (async () => {
       initMap();
