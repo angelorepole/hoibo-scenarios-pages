@@ -34,7 +34,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260608172807" />
+  <meta name="walk-build" content="20260609132004" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -1979,8 +1979,12 @@
         };
         const log = el("log-json").value.trim();
         if (log) body.logJson = log;
-        if (lastAnalysis && typeof lastAnalysis.ok === "boolean") {
-          body.field_log_ok = lastAnalysis.ok;
+        if (
+          lastAnalysis &&
+          (typeof lastAnalysis.checkPassed === "boolean" ||
+            typeof lastAnalysis.ok === "boolean")
+        ) {
+          body.field_log_ok = logCheckPassed(lastAnalysis);
         }
         const data = await api("/api/scenarios/playbook-status", {
           method: "POST",
@@ -2223,7 +2227,10 @@
         );
         const uploads = data.uploads || [];
         if (!uploads.length) {
-          if (statusEl) statusEl.textContent = "No uploads yet — tap Upload log on the phone.";
+          if (statusEl) {
+            statusEl.textContent =
+              `No uploads for ${appId}. Same phone in dropdown? App id on phone must match devices.json.`;
+          }
           return;
         }
         const latest = uploads[0];
@@ -2565,8 +2572,12 @@
     }
 
     function resolveFinishOutcomeFromLog() {
-      if (lastAnalysis?.ok === true) return "pass";
-      if (lastAnalysis?.ok === false) return "fail";
+      if (!lastAnalysis) return undefined;
+      if (typeof lastAnalysis.checkPassed === "boolean") {
+        return lastAnalysis.checkPassed ? "pass" : "fail";
+      }
+      if (lastAnalysis.ok === true) return "pass";
+      if (lastAnalysis.ok === false) return "fail";
       return undefined;
     }
 
@@ -2699,6 +2710,12 @@
       );
     };
 
+    function logCheckPassed(data) {
+      if (!data) return false;
+      if (typeof data.checkPassed === "boolean") return data.checkPassed;
+      return !!data.ok;
+    }
+
     function renderCheckResults(data) {
       const box = el("check-results");
       if (!data || !data.checks) {
@@ -2706,7 +2723,8 @@
         return;
       }
       box.hidden = false;
-      const summaryClass = data.ok ? "check-pass" : "check-fail";
+      const passed = logCheckPassed(data);
+      const summaryClass = passed ? "check-pass" : "check-fail";
       let html = `<div class="check-row ${summaryClass}"><strong>${data.summary || ""}</strong></div>`;
       data.checks.forEach((c) => {
         let cls = "check-manual";
@@ -2719,6 +2737,7 @@
         html += `<div class="check-row ${cls}">${icon} ${c.id}: ${c.detail}${idx}</div>`;
       });
       box.innerHTML = html;
+      box.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
     async function checkFieldLog() {
@@ -2747,7 +2766,8 @@
         playbookProgress = data.playbookSteps || playbookProgress;
         paintPlaybookList();
         renderCheckResults(data);
-        setStatus(data.summary || "Check complete.", data.ok);
+        const passed = logCheckPassed(data);
+        setStatus(data.summary || "Check complete.", passed);
       } catch (e) {
         renderCheckResults(null);
         setStatus(String(e.message || e), false);

@@ -253,7 +253,8 @@
           /* optional persist */
         }
       }
-      return { ok: true, ...result, playbookSteps };
+      const { ok: checkPassed, ...analysis } = result;
+      return { ok: true, checkPassed, ...analysis, playbookSteps };
     }
     if (path === "/api/scenarios/playbook-status" && method === "POST") {
       const scenarioId = body.scenario_id || body.preset_id;
