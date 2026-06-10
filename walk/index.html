@@ -34,7 +34,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260609132004" />
+  <meta name="walk-build" content="20260610050302" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -539,6 +539,7 @@
     .center-pin {
       background: transparent;
       border: none;
+      pointer-events: none;
     }
 
     .center-pin-dot {
@@ -950,7 +951,7 @@
       <div id="scenario-setup-block">
         <label class="form-label">Walk centre</label>
         <button type="button" class="btn btn-secondary" id="btn-gps">Use my location</button>
-        <p class="hint">Click or long-press the map to drop the orange centre dot. Shops use map pins inside the circle.
+        <p class="hint">Pan anywhere, then <strong>click</strong> the map for the orange centre dot and dashed circle. Long-press works on phone/iPad. Shops seed inside the circle.
         </p>
         <div class="coords-row">
           <div><label for="lat" class="form-label">Lat</label><input id="lat" type="number" step="any" readonly placeholder="—" /></div>
@@ -1008,7 +1009,7 @@
     </aside>
     <div class="map-wrap">
       <div id="map"></div>
-      <div class="map-hint" id="map-hint">Min zoom = Greater London · tap map to set centre pin</div>
+      <div class="map-hint" id="map-hint">Pan anywhere · click map to set centre pin</div>
     </div>
   </div>
 
@@ -1127,7 +1128,7 @@
 
     el("walk-boot-continue")?.addEventListener("click", () => {
       finishBoot();
-      refreshMapSize();
+      ensureMapReady();
     });
 
     (function () {
@@ -1625,7 +1626,7 @@
         } else if (hosted) {
           mapHint.textContent = "No active run — map fills when Mac starts a scenario.";
         } else {
-          mapHint.textContent = "Min zoom = Greater London · tap map to set centre pin";
+          mapHint.textContent = "Pan anywhere · click map to set centre pin";
         }
       }
 
@@ -1738,93 +1739,165 @@
       shadowAnchor: [14, 46],
     });
 
-    /** Greater London — walk centre pin must stay inside this box. */
-    const LONDON_BOUNDS = L.latLngBounds(
-      [51.28, -0.55],
-      [51.72, 0.35]
-    );
-    /** Cannot zoom out wider than ~Greater London. Pan is free (no snap-back). */
-    const LONDON_MIN_ZOOM = 10;
-
-    function clampToLondon(lat, lng) {
-      return L.latLng(
-        Math.min(LONDON_BOUNDS.getNorth(), Math.max(LONDON_BOUNDS.getSouth(), lat)),
-        Math.min(LONDON_BOUNDS.getEast(), Math.max(LONDON_BOUNDS.getWest(), lng))
-      );
-    }
+    const MAP_MIN_ZOOM = 2;
 
     function refreshMapSize() {
       if (!map) return;
       map.invalidateSize({ pan: false });
     }
 
+    function resetMapContainer() {
+      const old = document.getElementById("map");
+      if (!old) return null;
+      const fresh = document.createElement("div");
+      fresh.id = "map";
+      old.replaceWith(fresh);
+      return fresh;
+    }
+
+    let mapResizeHooked = false;
+    let lastCenterPlaceMs = 0;
+
     function initMap() {
+      if (map) return;
+
+      const container = document.getElementById("map");
+      if (!container) return;
+      if (container._leaflet_id != null) {
+        resetMapContainer();
+      }
+
       map = L.map("map", {
         tapTolerance: 15,
-        minZoom: LONDON_MIN_ZOOM,
+        minZoom: MAP_MIN_ZOOM,
       });
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap",
-        minZoom: LONDON_MIN_ZOOM,
+        minZoom: MAP_MIN_ZOOM,
         maxZoom: 19,
       }).addTo(map);
 
       map.setView([51.5074, -0.2214], 13);
 
-      requestAnimationFrame(() => {
-        refreshMapSize();
-        map.setView([51.5074, -0.2214], 13);
-      });
-
-      window.addEventListener("resize", refreshMapSize);
+      if (!mapResizeHooked) {
+        mapResizeHooked = true;
+        window.addEventListener("resize", refreshMapSize);
+      }
 
       map.on("click", (e) => {
-        if (currentRun || !canControlRuns()) return;
+        if (!canPlaceCenterPin()) return;
         if (suppressNextClick) {
           suppressNextClick = false;
           return;
         }
-        const p = clampToLondon(e.latlng.lat, e.latlng.lng);
-        setCenter(p.lat, p.lng, { pan: false });
+        if (placeCenterAt(e.latlng.lat, e.latlng.lng)) {
+          setStatus("Centre pin set.", true);
+        }
       });
 
-      setupLongPress();
+      setupMapCenterInput();
+
+      if (location.hostname === "127.0.0.1" && location.port === "8765") {
+        window.__hoiboWalkMap = map;
+      }
     }
 
-    function setupLongPress() {
-      const container = map.getContainer();
-      let timer = null;
-      let start = null;
+    function ensureMapReady() {
+      initMap();
+      refreshMapSize();
+      requestAnimationFrame(() => refreshMapSize());
+    }
 
-      const clear = () => {
-        if (timer) clearTimeout(timer);
-        timer = null;
-        start = null;
+    function latLngFromPointerEvent(ev) {
+      const px = map.mouseEventToContainerPoint(ev);
+      return map.containerPointToLatLng(px);
+    }
+
+    function placeCenterAt(lat, lng) {
+      if (!canPlaceCenterPin()) return false;
+      const now = Date.now();
+      if (now - lastCenterPlaceMs < 80) return false;
+      lastCenterPlaceMs = now;
+      setCenter(lat, lng, { pan: false });
+      return true;
+    }
+
+    function setupMapCenterInput() {
+      const container = document.getElementById("map");
+      if (!container || container.dataset.centerInputHooked === "1") return;
+      container.dataset.centerInputHooked = "1";
+
+      let pointerDown = null;
+      let longPressTimer = null;
+      const TAP_MOVE_PX = 12;
+
+      const clearLongPress = () => {
+        if (longPressTimer) clearTimeout(longPressTimer);
+        longPressTimer = null;
       };
 
-      container.addEventListener("touchstart", (e) => {
-        if (e.touches.length !== 1) return;
-        const t = e.touches[0];
-        start = { x: t.clientX, y: t.clientY, px: map.mouseEventToContainerPoint(t) };
-        timer = setTimeout(() => {
-          if (!start || currentRun) return;
-          const latlng = map.containerPointToLatLng(start.px);
-          const p = clampToLondon(latlng.lat, latlng.lng);
+      const finishTouchTap = (t, fromLongPress = false) => {
+        if (!pointerDown) return;
+        const down = pointerDown;
+        pointerDown = null;
+        clearLongPress();
+        if (!canPlaceCenterPin()) return;
+        if (suppressNextClick) {
+          suppressNextClick = false;
+          return;
+        }
+        if (!fromLongPress && Math.hypot(t.clientX - down.x, t.clientY - down.y) > TAP_MOVE_PX) return;
+        const latlng = latLngFromPointerEvent(t);
+        if (placeCenterAt(latlng.lat, latlng.lng)) {
+          setStatus(fromLongPress ? "Centre pin set (long-press)." : "Centre pin set.", true);
+        }
+      };
+
+      const startPointer = (ev) => {
+        if (!canPlaceCenterPin()) return;
+        const latlng = latLngFromPointerEvent(ev);
+        pointerDown = { x: ev.clientX, y: ev.clientY, lat: latlng.lat, lng: latlng.lng };
+        clearLongPress();
+        if (ev.pointerType !== "touch") return;
+        longPressTimer = setTimeout(() => {
+          if (!pointerDown || !canPlaceCenterPin()) return;
           suppressNextClick = true;
-          setCenter(p.lat, p.lng);
-          setStatus("Centre pin moved (long-press).", true);
-          clear();
+          if (placeCenterAt(pointerDown.lat, pointerDown.lng)) {
+            setStatus("Centre pin set (long-press).", true);
+          }
+          pointerDown = null;
+          clearLongPress();
         }, 480);
-      }, { passive: true });
+      };
 
-      container.addEventListener("touchmove", (e) => {
-        if (!start || e.touches.length !== 1) return;
-        const t = e.touches[0];
-        if (Math.hypot(t.clientX - start.x, t.clientY - start.y) > 12) clear();
-      }, { passive: true });
+      const movePointer = (ev) => {
+        if (!pointerDown) return;
+        if (Math.hypot(ev.clientX - pointerDown.x, ev.clientY - pointerDown.y) > TAP_MOVE_PX) {
+          pointerDown = null;
+          clearLongPress();
+        }
+      };
 
-      container.addEventListener("touchend", clear, { passive: true });
-      container.addEventListener("touchcancel", clear, { passive: true });
+      const endPointer = (ev) => {
+        if (!pointerDown) return;
+        if (ev.pointerType === "touch") {
+          finishTouchTap(
+            { clientX: ev.clientX, clientY: ev.clientY },
+            false,
+          );
+          return;
+        }
+        pointerDown = null;
+        clearLongPress();
+      };
+
+      container.addEventListener("pointerdown", startPointer);
+      container.addEventListener("pointermove", movePointer);
+      container.addEventListener("pointerup", endPointer);
+      container.addEventListener("pointercancel", () => {
+        pointerDown = null;
+        clearLongPress();
+      });
     }
 
     function clearDraftMapOverlays() {
@@ -1855,27 +1928,30 @@
         fillColor: "#f59207",
         fillOpacity: 0.08,
         dashArray: "6 4",
+        interactive: false,
       }).addTo(map);
     }
 
     function setCenter(lat, lng, opts = {}) {
-      const p = clampToLondon(lat, lng);
+      if (!map) return;
       hasCenter = true;
-      el("lat").value = p.lat.toFixed(6);
-      el("lng").value = p.lng.toFixed(6);
+      el("lat").value = lat.toFixed(6);
+      el("lng").value = lng.toFixed(6);
       if (!opts.skipPersist) {
-        localStorage.setItem(CENTER_KEY, JSON.stringify({ lat: p.lat, lng: p.lng }));
+        localStorage.setItem(CENTER_KEY, JSON.stringify({ lat, lng }));
       }
       updateRunButtons();
 
       if (centerMarker) map.removeLayer(centerMarker);
-      centerMarker = L.marker([p.lat, p.lng], { icon: centrePinIcon, zIndexOffset: 1000 })
-        .addTo(map)
-        .bindPopup("Walk centre — shops scatter within 800 m");
+      centerMarker = L.marker([lat, lng], {
+        icon: centrePinIcon,
+        zIndexOffset: 1000,
+        interactive: false,
+      }).addTo(map);
 
-      drawRadiusCircle(p.lat, p.lng);
+      drawRadiusCircle(lat, lng);
 
-      if (opts.pan !== false) map.setView([p.lat, p.lng], Math.max(map.getZoom(), 15));
+      if (opts.pan !== false) map.setView([lat, lng], Math.max(map.getZoom(), 15));
     }
 
     function clearShopMarkers() {
@@ -2069,6 +2145,11 @@
     /** Run / Finish / Abandon / phone prep — Mac dev console only. Hosted site is view + log check. */
     function canControlRuns() {
       return !isHostedConsole();
+    }
+
+    /** Drop or move the walk centre pin before a run starts. */
+    function canPlaceCenterPin() {
+      return canControlRuns() && !currentRun;
     }
 
     function applyConsoleModeBanner() {
@@ -2859,7 +2940,6 @@
     });
 
     (async () => {
-      initMap();
       try {
         if (isHostedConsole()) {
           setBootStep("Unlocking config (enter admin API key if prompted)…");
@@ -2900,13 +2980,17 @@
         registryDevices = devicesRes.devices || [];
         renderDevicePick();
         radiusM = catalog.defaultRadiusM || 800;
-        el("map-hint").textContent = `Min zoom ≈ Greater London · ${radiusM} m shop radius · console → ${consoleEnvLabel}`;
+        el("map-hint").textContent = `${radiusM} m shop radius · console → ${consoleEnvLabel}`;
         fillPresets();
 
         if (!isHostedConsole()) {
           setBootStep("Checking app installs on phones…");
           await loadDeviceBuildsIfLocal();
         }
+
+        finishBoot();
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        ensureMapReady();
 
         await tryLoadActiveRun({
           silent: true,
@@ -2928,9 +3012,7 @@
         setBootStep("Loading run log…");
         updateRunButtons();
         await loadRunHistory();
-
-        finishBoot();
-        refreshMapSize();
+        requestAnimationFrame(() => refreshMapSize());
       } catch (e) {
         failBoot(String(e.message || e));
       }
