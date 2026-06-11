@@ -21,32 +21,68 @@
     sessionStorage.removeItem(LEGACY_KEY);
   }
 
+  async function promptAdminKey(message) {
+    if (typeof window.__promptAdminKey === "function") {
+      return window.__promptAdminKey(message);
+    }
+    return prompt(message);
+  }
+
+  function clearCryptoCaches() {
+    envConfigCache = null;
+    catalogCache = null;
+  }
+
+  function clearAllScenarioKeys() {
+    sessionStorage.removeItem(CRYPTO_KEY);
+    sessionStorage.removeItem(LEGACY_KEY);
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith(API_KEY_PREFIX)) sessionStorage.removeItem(k);
+    }
+    clearCryptoCaches();
+  }
+
+  window.__clearScenarioKeys = clearAllScenarioKeys;
+
   /** Key for decrypting *.enc.json (build-time; usually .env.stage). */
-  function cryptoAdminKey() {
+  async function cryptoAdminKey() {
     migrateLegacyAdminKey();
     let k = sessionStorage.getItem(CRYPTO_KEY);
     if (!k) {
-      k = prompt(
+      k = await promptAdminKey(
         "Admin API key for encrypted scenario files (Pages build key — usually from .env.stage):",
       );
       if (k) sessionStorage.setItem(CRYPTO_KEY, k.trim());
     }
-    return (k || "").trim();
+    k = (k || "").trim();
+    if (!k) {
+      throw new Error(
+        "Admin API key required — enter ADMIN_API_KEY from FlashSale .env.stage to unlock scenario files.",
+      );
+    }
+    return k;
   }
 
   /** Key for scenario-runs / field-log Edge Functions on the selected env. */
-  function supabaseAdminKey(env) {
+  async function supabaseAdminKey(env) {
     migrateLegacyAdminKey();
     const slug = String(env || consoleEnv || "stage").toLowerCase();
     const storageKey = API_KEY_PREFIX + slug;
     let k = sessionStorage.getItem(storageKey);
     if (!k) {
-      k = prompt(
+      k = await promptAdminKey(
         `Supabase admin key for ${slug.toUpperCase()} (from FlashSale .env.${slug} — not the same as STAGE if PROD):`,
       );
       if (k) sessionStorage.setItem(storageKey, k.trim());
     }
-    return (k || "").trim();
+    k = (k || "").trim();
+    if (!k) {
+      throw new Error(
+        `Supabase admin key required for ${slug.toUpperCase()} — enter ADMIN_API_KEY from FlashSale .env.${slug}.`,
+      );
+    }
+    return k;
   }
 
   function clearSupabaseAdminKey(env) {
@@ -62,7 +98,7 @@
     if (!envConfigCache) {
       envConfigCache = await ScenarioHostedCrypto.fetchEncryptedJson(
         "../environments.enc.json",
-        cryptoAdminKey(),
+        await cryptoAdminKey(),
       );
     }
     return envConfigCache;
@@ -72,7 +108,7 @@
     if (!catalogCache) {
       catalogCache = await ScenarioHostedCrypto.fetchEncryptedJson(
         "../scenarios/catalog.enc.json",
-        cryptoAdminKey(),
+        await cryptoAdminKey(),
       );
     }
     return catalogCache;
@@ -140,7 +176,7 @@
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-admin-api-key": supabaseAdminKey(consoleEnv),
+        "x-admin-api-key": await supabaseAdminKey(consoleEnv),
       },
       body: JSON.stringify(body),
     });
@@ -213,7 +249,7 @@
       try {
         const devices = await ScenarioHostedCrypto.fetchEncryptedJson(
           "../devices.enc.json",
-          cryptoAdminKey(),
+          await cryptoAdminKey(),
         );
         return { ok: true, devices: devices.devices || devices };
       } catch (_) {

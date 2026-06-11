@@ -34,7 +34,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260610060212" />
+  <meta name="walk-build" content="20260611071709" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -912,6 +912,7 @@
       <div class="walk-boot-spinner" aria-hidden="true"></div>
       <p class="walk-boot-step" id="walk-boot-step">Starting…</p>
       <div class="walk-boot-actions" id="walk-boot-actions" hidden>
+        <button type="button" class="btn btn-primary" id="walk-boot-retry" hidden>Clear key &amp; retry</button>
         <button type="button" class="btn btn-secondary" id="walk-boot-continue">Continue anyway</button>
       </div>
     </div>
@@ -1095,7 +1096,57 @@
   <script src="field-log-engine.js"></script>
   <script src="field-log-analyze.js"></script>
   <script src="playbook-evaluate.js"></script>
+  <div class="modal-overlay" id="admin-key-modal" hidden>
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <header class="modal-header">
+        <h2>Admin API key</h2>
+      </header>
+      <div class="modal-body">
+        <p class="hint" id="admin-key-prompt"></p>
+        <label for="admin-key-input" class="form-label">Key</label>
+        <input type="password" id="admin-key-input" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="admin-key-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="admin-key-ok">Unlock</button>
+      </footer>
+    </div>
+  </div>
   <script src="hosted-crypto.js"></script>
+  <script>
+    window.__promptAdminKey = function (message) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById("admin-key-modal");
+        const promptEl = document.getElementById("admin-key-prompt");
+        const input = document.getElementById("admin-key-input");
+        const okBtn = document.getElementById("admin-key-ok");
+        const cancelBtn = document.getElementById("admin-key-cancel");
+        if (!modal || !input) {
+          resolve(prompt(message));
+          return;
+        }
+        promptEl.textContent = message;
+        input.value = "";
+        modal.hidden = false;
+        const done = (value) => {
+          modal.hidden = true;
+          okBtn.onclick = null;
+          cancelBtn.onclick = null;
+          input.onkeydown = null;
+          resolve(value);
+        };
+        okBtn.onclick = () => done(input.value.trim() || null);
+        cancelBtn.onclick = () => done(null);
+        input.onkeydown = (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            okBtn.click();
+          }
+        };
+        requestAnimationFrame(() => input.focus());
+      });
+    };
+  </script>
   <script src="hosted-bootstrap.js"></script>
   <script>
     const el = (id) => document.getElementById(id);
@@ -1123,8 +1174,16 @@
       if (boot) boot.classList.add("walk-boot-err");
       const actions = el("walk-boot-actions");
       if (actions) actions.hidden = false;
+      const isKeyErr = /admin api key|encrypted files|admin key required/i.test(msg);
+      const retry = el("walk-boot-retry");
+      if (retry) retry.hidden = !isKeyErr;
       setStatus(msg, false);
     }
+
+    el("walk-boot-retry")?.addEventListener("click", () => {
+      window.__clearScenarioKeys?.();
+      location.reload();
+    });
 
     el("walk-boot-continue")?.addEventListener("click", () => {
       finishBoot();

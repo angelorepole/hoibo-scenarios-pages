@@ -24,11 +24,23 @@ async function decryptScenarioJsonEnvelope(adminKey, envelope) {
     throw new Error("Unsupported encrypted JSON envelope");
   }
   const key = await scenarioCryptoKey(adminKey);
-  const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: b64ToBytes(envelope.iv) },
-    key,
-    b64ToBytes(envelope.data),
-  );
+  let plain;
+  try {
+    plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: b64ToBytes(envelope.iv) },
+      key,
+      b64ToBytes(envelope.data),
+    );
+  } catch (e) {
+    const name = e?.name || "";
+    const msg = String(e?.message || e);
+    if (name === "OperationError" || /operation-specific reason/i.test(msg)) {
+      throw new Error(
+        "Wrong admin API key for encrypted files — use ADMIN_API_KEY from FlashSale .env.stage (same key used when GitHub Pages was built).",
+      );
+    }
+    throw e;
+  }
   return JSON.parse(new TextDecoder().decode(plain));
 }
 
