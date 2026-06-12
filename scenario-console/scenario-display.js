@@ -1,4 +1,4 @@
-/** Plain-English scenario copy for walk UI (overlays catalog.json). */
+/** Plain-English copy from each scenario's pack `display` block. */
 (function (global) {
   const WHO_LABELS = {
     Mac: "Setup",
@@ -7,22 +7,10 @@
     Field: "Walk",
     Phone: "Phone",
     Optional: "Optional",
+    Setup: "Setup",
+    Walk: "Walk",
+    Verify: "Verify",
   };
-
-  let humanCopyCache = null;
-
-  async function loadHumanCopy() {
-    if (humanCopyCache) return humanCopyCache;
-    try {
-      const res = await fetch("../scenarios/scenario-human-copy.json");
-      if (!res.ok) return {};
-      const data = await res.json();
-      humanCopyCache = data.scenarios || {};
-    } catch (_) {
-      humanCopyCache = {};
-    }
-    return humanCopyCache;
-  }
 
   function normalizePlaybookWho(playbook) {
     return (playbook || []).map((step) => ({
@@ -31,9 +19,9 @@
     }));
   }
 
-  function applyHumanCopy(scenario, copyMap) {
+  function applyHumanCopy(scenario) {
     if (!scenario) return scenario;
-    const overlay = (copyMap || {})[scenario.id] || {};
+    const overlay = scenario.display || {};
     const merged = { ...scenario };
     for (const key of ["purpose", "summary", "passCriteria", "playbook", "cleanupWhen"]) {
       if (overlay[key] !== undefined) merged[key] = overlay[key];
@@ -45,13 +33,11 @@
     return merged;
   }
 
-  async function scenarioForDisplay(scenario) {
-    const copy = await loadHumanCopy();
-    return applyHumanCopy(scenario, copy);
+  function scenarioForDisplay(scenario) {
+    return applyHumanCopy(scenario);
   }
 
   global.ScenarioDisplay = {
-    loadHumanCopy,
     applyHumanCopy,
     scenarioForDisplay,
     normalizePlaybookWho,

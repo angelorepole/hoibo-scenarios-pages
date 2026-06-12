@@ -1,4 +1,4 @@
-// AUTO-GENERATED — run scripts/embed_field_log_rules.py after editing field_log_engine_rules.json
+// AUTO-GENERATED — run scripts/merge_scenario_packs.py after editing scenario packs
 (function (global) {
   const WALK_FIELD_LOG_RULES = {
   "below-gate": [
@@ -451,6 +451,35 @@
       ]
     }
   ],
+  "bootstrap-day3": [
+    {
+      "id": "bootstrap-score-or-deliver",
+      "description": "Row 17 boost visible OR allow/deliver during lunch walk",
+      "rules": [
+        {
+          "id": "allow-lunch",
+          "where": {
+            "gateDecision": "allow",
+            "minIntentScore": 60,
+            "inLunchWindow": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "would-deliver-lunch",
+          "where": {
+            "wouldDeliver": true,
+            "inLunchWindow": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
   "visit-wake": [
     {
       "id": "visit-or-slot",
@@ -495,35 +524,6 @@
           "id": "station-cluster",
           "where": {
             "nearStationCluster": true
-          },
-          "expect": {
-            "minMatches": 1
-          }
-        }
-      ]
-    }
-  ],
-  "bootstrap-day3": [
-    {
-      "id": "bootstrap-score-or-deliver",
-      "description": "Row 17 boost visible OR allow/deliver during lunch walk",
-      "rules": [
-        {
-          "id": "allow-lunch",
-          "where": {
-            "gateDecision": "allow",
-            "minIntentScore": 60,
-            "inLunchWindow": true
-          },
-          "expect": {
-            "minMatches": 1
-          }
-        },
-        {
-          "id": "would-deliver-lunch",
-          "where": {
-            "wouldDeliver": true,
-            "inLunchWindow": true
           },
           "expect": {
             "minMatches": 1

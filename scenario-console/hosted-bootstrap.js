@@ -133,13 +133,12 @@
   }
 
   async function mapScenarioList(catalog) {
-    const copy =
-      typeof ScenarioDisplay !== "undefined" ? await ScenarioDisplay.loadHumanCopy() : {};
     return (catalog.scenarios || catalog.presets || []).map((s) => {
+      const base = mapScenarioBase(s);
       const merged =
         typeof ScenarioDisplay !== "undefined"
-          ? ScenarioDisplay.applyHumanCopy({ ...s, ...mapScenarioBase(s) }, copy)
-          : mapScenarioBase(s);
+          ? ScenarioDisplay.applyHumanCopy({ ...s, ...base })
+          : base;
       return {
         ...mapScenarioBase(merged),
         passCriteria: merged.passCriteria || merged.fieldLogExpect || [],
@@ -227,7 +226,7 @@
     const body = opts.body ? JSON.parse(opts.body) : {};
 
     const MAC_ONLY =
-      "Run, Finish, and Abandon are Mac Dev Console only (127.0.0.1:8765/walk/). This site is view + log check.";
+      "Run, Finish, and Abandon are Mac Dev Console only (127.0.0.1:8765/scenario-console/). This site is view + log check.";
     function rejectMacOnly() {
       throw new Error(MAC_ONLY);
     }
