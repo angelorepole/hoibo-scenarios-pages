@@ -196,15 +196,71 @@
       }
     }
   ],
-  "defer-retry": [
+  "engagement-cooldown": [
     {
-      "id": "defer-wake",
-      "description": "Defer timer re-score",
+      "id": "offers-loaded",
+      "description": "Feed loaded near scenario",
       "where": {
-        "wakeSource": "defer"
+        "minOfferCount": 1
       },
       "expect": {
         "minMatches": 1
+      }
+    },
+    {
+      "id": "engagement-defer-high-score",
+      "description": "After feed/map engagement, gate defers even with score >= 70",
+      "where": {
+        "gateDecision": "defer",
+        "minIntentScore": 70
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "no-delivery-while-deferred",
+      "description": "No surfaced alert on engagement-cooldown defer rows",
+      "where": {
+        "gateDecision": "defer",
+        "surfaced": true
+      },
+      "expect": {
+        "none": true
+      }
+    }
+  ],
+  "map-engagement-cooldown": [
+    {
+      "id": "offers-loaded",
+      "description": "Map loaded near scenario",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "engagement-defer-high-score",
+      "description": "After map pan or pin tap, gate defers even with score >= 70",
+      "where": {
+        "gateDecision": "defer",
+        "minIntentScore": 70
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "no-delivery-while-deferred",
+      "description": "No surfaced alert on engagement-cooldown defer rows",
+      "where": {
+        "gateDecision": "defer",
+        "surfaced": true
+      },
+      "expect": {
+        "none": true
       }
     }
   ],

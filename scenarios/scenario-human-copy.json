@@ -173,10 +173,16 @@
       "passCriteria": ["wakeSource=visit OR learned slot strength ≥ 0.5"],
       "cleanupWhen": "After log check passes, Finish & remove."
     },
-    "defer-retry": {
-      "purpose": "Defer band should re-score after ~3 min stationary.",
-      "summary": "Walk near shops, then stand still — look for defer wake.",
-      "passCriteria": ["wakeSource=defer in log"],
+    "engagement-cooldown": {
+      "purpose": "After feed use, alerts must pause 3h even at high score.",
+      "summary": "Walk for score ≥70, scroll feed (not map), trigger another wake — defer, no alert.",
+      "passCriteria": ["gateDecision=defer", "intentScore ≥ 70", "no surfaced alert"],
+      "cleanupWhen": "After log check passes, Finish & remove."
+    },
+    "map-engagement-cooldown": {
+      "purpose": "After map pan or pin tap, alerts must pause 3h even at high score.",
+      "summary": "Walk for score ≥70, pan map or tap pin, trigger another wake — defer, no alert.",
+      "passCriteria": ["gateDecision=defer", "intentScore ≥ 70", "no surfaced alert"],
       "cleanupWhen": "After log check passes, Finish & remove."
     },
     "activity-wake": {
