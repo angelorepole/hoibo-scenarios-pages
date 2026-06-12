@@ -188,6 +188,11 @@
       );
     }
     if (!res.ok || data.ok === false) {
+      if (res.status === 404 && name === "report-field-log") {
+        throw new Error(
+          `Intent report not deployed on ${consoleEnv.toUpperCase()} — run: supabase functions deploy report-field-log (linked to that project), or switch to Stage.`,
+        );
+      }
       throw new Error(data.error || data.message || "HTTP " + res.status);
     }
     return data;
@@ -339,6 +344,16 @@
       }
       const { ok: checkPassed, ...analysis } = result;
       return { ok: true, checkPassed, ...analysis, playbookSteps };
+    }
+    if (path === "/api/scenarios/report-log" && method === "POST") {
+      const log = body.log ?? body.logJson ?? body.log_json;
+      if (log == null) throw new Error("log or logJson required");
+      const payload = typeof log === "string" ? { logJson: log } : { log };
+      const scenarioId = body.scenario_id || body.preset_id;
+      if (scenarioId) payload.scenario_id = String(scenarioId);
+      const runId = body.run_id || body.upload_run_id;
+      if (runId) payload.run_id = String(runId);
+      return supabaseFn("report-field-log", payload);
     }
     if (path === "/api/scenarios/playbook-status" && method === "POST") {
       const scenarioId = body.scenario_id || body.preset_id;

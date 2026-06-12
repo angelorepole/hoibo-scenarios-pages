@@ -13,10 +13,11 @@
       }
     },
     {
-      "id": "below-opportunity",
-      "description": "Opportunity stays below alert gate",
+      "id": "below-score",
+      "description": "Intent score below allow bar (70)",
       "where": {
-        "maxOpportunitySum": 9.99
+        "maxIntentScore": 69,
+        "minOfferCount": 1
       },
       "expect": {
         "minMatches": 1
@@ -44,9 +45,15 @@
       }
     },
     {
-      "id": "opportunity-met",
+      "id": "walking-near-offers",
+      "description": "On foot near seeded offers",
       "where": {
-        "minOpportunitySum": 10
+        "minOfferCount": 1,
+        "activity": [
+          "walking",
+          "stationary",
+          "unknown"
+        ]
       },
       "expect": {
         "minMatches": 1
@@ -64,9 +71,10 @@
       }
     },
     {
-      "id": "lunch-opportunity",
+      "id": "lunch-walking",
+      "description": "Midday walk near offers",
       "where": {
-        "minOpportunitySum": 10,
+        "minOfferCount": 1,
         "activity": [
           "walking",
           "stationary",
@@ -127,9 +135,10 @@
       }
     },
     {
-      "id": "mall-opportunity",
+      "id": "mall-walking",
+      "description": "Dense ring while on foot",
       "where": {
-        "minOpportunitySum": 10,
+        "minOfferCount": 10,
         "activity": [
           "walking",
           "stationary",
@@ -143,9 +152,16 @@
   ],
   "bootstrap-day3": [
     {
-      "id": "bootstrap-opportunity",
+      "id": "bootstrap-lunch-walk",
+      "description": "Day-3 lunch window walk with offers loaded",
       "where": {
-        "minOpportunitySum": 10
+        "minOfferCount": 1,
+        "inLunchWindow": true,
+        "activity": [
+          "walking",
+          "stationary",
+          "unknown"
+        ]
       },
       "expect": {
         "minMatches": 1
@@ -154,9 +170,15 @@
   ],
   "parcel-run": [
     {
-      "id": "errand-opportunity",
+      "id": "parcel-walking",
+      "description": "Errand walk with offers in ring",
       "where": {
-        "minOpportunitySum": 10
+        "minOfferCount": 1,
+        "activity": [
+          "walking",
+          "stationary",
+          "unknown"
+        ]
       },
       "expect": {
         "minMatches": 1
@@ -293,10 +315,10 @@
   ],
   "car-to-walk": [
     {
-      "id": "car-to-walk",
-      "description": "Parked and walking after car session",
+      "id": "commute-to-walk",
+      "description": "Walking after commute / car session",
       "where": {
-        "carToWalk": true,
+        "commuteToWalk": true,
         "activity": "walking"
       },
       "expect": {
@@ -306,10 +328,10 @@
   ],
   "anchor-opportunity-ring": [
     {
-      "id": "anchor-ring",
-      "description": "Near learned anchor with offers in ring",
+      "id": "offer-radius-density",
+      "description": "Enough offers inside user offer-radius setting",
       "where": {
-        "insideRingFromAnchor": true
+        "offerRadiusDensityMet": true
       },
       "expect": {
         "minMatches": 1
@@ -332,13 +354,12 @@
   "walk-allow": [
     {
       "id": "delivery-path",
-      "description": "Would deliver OR allow score \u2265 60",
+      "description": "Would deliver OR allow score \u2265 70",
       "rules": [
         {
           "id": "would-deliver",
           "where": {
             "wouldDeliver": true,
-            "minOpportunitySum": 10,
             "activity": [
               "walking",
               "stationary",
@@ -353,8 +374,12 @@
           "id": "allow-band",
           "where": {
             "gateDecision": "allow",
-            "minIntentScore": 60,
-            "minOpportunitySum": 10
+            "minIntentScore": 70,
+            "activity": [
+              "walking",
+              "stationary",
+              "unknown"
+            ]
           },
           "expect": {
             "minMatches": 1
@@ -392,13 +417,17 @@
   "quiet-allow": [
     {
       "id": "quiet-or-deliver",
-      "description": "Would deliver (quiet or ping) with strong opportunity",
+      "description": "Would deliver (quiet or ping) OR allow score \u2265 70",
       "rules": [
         {
           "id": "would-deliver",
           "where": {
             "wouldDeliver": true,
-            "minOpportunitySum": 10
+            "activity": [
+              "walking",
+              "stationary",
+              "unknown"
+            ]
           },
           "expect": {
             "minMatches": 1
@@ -408,8 +437,12 @@
           "id": "allow-quiet",
           "where": {
             "gateDecision": "allow",
-            "minIntentScore": 60,
-            "minOpportunitySum": 10
+            "minIntentScore": 70,
+            "activity": [
+              "walking",
+              "stationary",
+              "unknown"
+            ]
           },
           "expect": {
             "minMatches": 1
@@ -462,6 +495,35 @@
           "id": "station-cluster",
           "where": {
             "nearStationCluster": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
+  "bootstrap-day3": [
+    {
+      "id": "bootstrap-score-or-deliver",
+      "description": "Row 17 boost visible OR allow/deliver during lunch walk",
+      "rules": [
+        {
+          "id": "allow-lunch",
+          "where": {
+            "gateDecision": "allow",
+            "minIntentScore": 60,
+            "inLunchWindow": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "would-deliver-lunch",
+          "where": {
+            "wouldDeliver": true,
+            "inLunchWindow": true
           },
           "expect": {
             "minMatches": 1

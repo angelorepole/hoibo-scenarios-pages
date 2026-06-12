@@ -5,7 +5,7 @@
       "purpose": "Make sure the app stays quiet when nearby deals are not worth interrupting you.",
       "summary": "4 shops with modest offers. Walk near them — you should not get a deal alert.",
       "passCriteria": [
-        "The app treated nearby deals as too weak for an alert (or blocked one)",
+        "Intent score stayed below 70 (or gate suppress)",
         "No deal alert actually fired"
       ],
       "playbook": [
@@ -23,9 +23,9 @@
       "purpose": "Make sure a real walk near several good shops can qualify for a deal alert.",
       "summary": "12 shops (coffee, food, fashion, beauty). Walk between pins and linger — the app should see enough value nearby.",
       "passCriteria": [
-        "Nearby deals were strong enough together that the app would consider alerting you",
-        "You were walking or standing still — not driving past",
-        "No “you’re driving” block in the log"
+        "Intent score ≥70 allow or wouldDeliver while on foot",
+        "Walking or standing — not driving",
+        "No HS-05 driving block in the log"
       ],
       "playbook": [
         { "step": 1, "who": "Phone", "do": "On Mac: fresh install for this phone (Dev Console → Real iPhones). Then deal alerts ON.", "verify": "manual" },

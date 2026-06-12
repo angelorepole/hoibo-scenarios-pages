@@ -34,7 +34,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260612134120" />
+  <meta name="walk-build" content="20260612140833" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -611,7 +611,7 @@
 
     .log-check .btn-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 0.5rem;
       margin-top: 0.5rem;
     }
@@ -1018,14 +1018,14 @@
   <div class="modal-overlay" id="log-modal" hidden>
     <div class="modal-content">
       <header class="modal-header">
-        <h2>Field log check</h2>
+        <h2>Field log</h2>
         <button type="button" class="modal-close" id="btn-close-log-modal">&times;</button>
       </header>
       <div class="modal-body">
         <div class="workflow-note mb-3">
           <strong>After your walk:</strong><br />
           <strong>Phone:</strong> Settings → <em>Deal alert test log</em> → <strong>Upload log</strong>.<br />
-          Then <em>Load cloud log</em> here → <em>Check log</em> for pass/fail vs the playbook.
+          Then <em>Load cloud log</em> here → <em>Check log</em> (playbook pass/fail) or <em>Intent report</em> (engine story across the whole log).
         </div>
         <div class="log-check mt-0 mb-0" id="log-check" style="border: none; background: transparent; padding: 0;">
           <label for="log-phone" class="form-label">Phone (cloud upload)</label>
@@ -1037,9 +1037,10 @@
           <p class="hint mt-0">Or paste JSON manually. LLM prompt for multi-day or category-off.</p>
           <input type="file" id="log-file" class="file-input" accept=".json,application/json,text/plain" />
           <textarea id="log-json" placeholder='[{"at":"…","gateDecision":"suppress","opportunitySum":7.2,…}]'></textarea>
-          <div class="btn-row mt-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <div class="btn-row mt-2">
             <button type="button" class="btn btn-primary" id="btn-check-log">Check log</button>
-            <button type="button" class="btn btn-secondary" id="btn-copy-llm">Copy LLM prompt</button>
+            <button type="button" class="btn btn-primary" id="btn-intent-report">Intent report</button>
+            <button type="button" class="btn btn-secondary" id="btn-copy-llm">Copy LLM</button>
           </div>
           <div class="check-list mt-3" id="check-results" hidden></div>
         </div>
@@ -2880,12 +2881,7 @@
       box.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
-    async function checkFieldLog() {
-      const raw = el("log-json").value.trim();
-      if (!raw) {
-        setStatus("Paste field log JSON first.", false);
-        return;
-      }
+    function fieldLogRequestBody(raw) {
       const body = {
         scenario_id: activeScenarioId(),
         logJson: raw,
@@ -2895,12 +2891,29 @@
       if (lastCloudLogMeta.scenario_id) body.upload_scenario_id = lastCloudLogMeta.scenario_id;
       const phone = selectedPhone();
       if (phone?.app_id) body.app_id = phone.app_id;
+      return body;
+    }
+
+    function openIntentReportPage(data) {
+      // localStorage (not sessionStorage) — new tabs do not inherit sessionStorage
+      localStorage.setItem("hoibo_intent_report", JSON.stringify(data));
+      const url = new URL("intent-report.html", window.location.href).href;
+      const tab = window.open(url, "_blank", "noopener");
+      if (!tab) window.location.href = url;
+    }
+
+    async function checkFieldLog() {
+      const raw = el("log-json").value.trim();
+      if (!raw) {
+        setStatus("Paste field log JSON first.", false);
+        return;
+      }
       setStatus("Checking log…");
       try {
         const data = await api("/api/scenarios/analyze-log", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify(fieldLogRequestBody(raw)),
         });
         lastAnalysis = data;
         playbookProgress = data.playbookSteps || playbookProgress;
@@ -2910,6 +2923,30 @@
         setStatus(data.summary || "Check complete.", passed);
       } catch (e) {
         renderCheckResults(null);
+        setStatus(String(e.message || e), false);
+      }
+    }
+
+    async function intentReport() {
+      const raw = el("log-json").value.trim();
+      if (!raw) {
+        setStatus("Load cloud log or paste JSON first.", false);
+        return;
+      }
+      setStatus("Building intent report…");
+      try {
+        const data = await api("/api/scenarios/report-log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fieldLogRequestBody(raw)),
+        });
+        openIntentReportPage(data);
+        const v = data.verdict || data.report?.verdict;
+        setStatus(
+          `Intent report opened in new tab · ${data.entryCount ?? data.report?.meta?.entryCount ?? "?"} runs.`,
+          v?.delivery === "pass",
+        );
+      } catch (e) {
         setStatus(String(e.message || e), false);
       }
     }
@@ -2961,6 +2998,7 @@
     };
 
     el("btn-check-log").onclick = checkFieldLog;
+    el("btn-intent-report").onclick = intentReport;
     el("btn-copy-llm").onclick = copyLlmPrompt;
     el("btn-fetch-cloud-log").onclick = fetchCloudLog;
 

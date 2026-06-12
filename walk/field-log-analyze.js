@@ -60,6 +60,9 @@
     if ("intentScoreGte" in rule && Number(entry.intentScore || 0) < Number(rule.intentScoreGte)) {
       return false;
     }
+    if ("intentScoreLt" in rule && Number(entry.intentScore || 0) >= Number(rule.intentScoreLt)) {
+      return false;
+    }
     if ("slotStrengthGte" in rule && Number(entry.slotStrength || 0) < Number(rule.slotStrengthGte)) {
       return false;
     }
@@ -239,18 +242,23 @@ Be concise. Plain English.`;
       checks.push({ id: "min_entries", pass: true, detail: `${entries.length} entries` });
     }
 
-    (rules.passIfAny || []).forEach((rule, i) => {
-      const label = rule.label || `pass_if_any_${i + 1}`;
-      const hits = findMatchingEntries(entries, rule);
-      const ok = hits.length > 0;
-      checks.push({
-        id: label,
-        pass: ok,
-        detail: rule.description || label,
-        matchedEntryIndexes: hits.slice(0, 5),
+    const passIfAny = rules.passIfAny || [];
+    if (passIfAny.length > 0) {
+      let anyPassed = false;
+      passIfAny.forEach((rule, i) => {
+        const label = rule.label || `pass_if_any_${i + 1}`;
+        const hits = findMatchingEntries(entries, rule);
+        const ok = hits.length > 0;
+        if (ok) anyPassed = true;
+        checks.push({
+          id: label,
+          pass: ok,
+          detail: rule.description || label,
+          matchedEntryIndexes: hits.slice(0, 5),
+        });
       });
-      if (!ok) failed = true;
-    });
+      if (!anyPassed) failed = true;
+    }
 
     (rules.failIfAny || []).forEach((rule, i) => {
       const label = rule.label || `fail_if_any_${i + 1}`;
