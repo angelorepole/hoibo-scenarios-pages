@@ -45,23 +45,34 @@
 
   window.__clearScenarioKeys = clearAllScenarioKeys;
 
+  let cryptoKeyInflight = null;
+  const supabaseKeyInflight = {};
+
   /** Key for decrypting *.enc.json (build-time; usually .env.stage). */
   async function cryptoAdminKey() {
     migrateLegacyAdminKey();
-    let k = sessionStorage.getItem(CRYPTO_KEY);
-    if (!k) {
-      k = await promptAdminKey(
-        "Admin API key for encrypted scenario files (Pages build key — usually from .env.stage):",
-      );
-      if (k) sessionStorage.setItem(CRYPTO_KEY, k.trim());
+    const stored = (sessionStorage.getItem(CRYPTO_KEY) || "").trim();
+    if (stored) return stored;
+
+    if (!cryptoKeyInflight) {
+      cryptoKeyInflight = (async () => {
+        const k = await promptAdminKey(
+          "Admin API key for encrypted scenario files (Pages build key — usually from .env.stage):",
+        );
+        const trimmed = (k || "").trim();
+        if (trimmed) sessionStorage.setItem(CRYPTO_KEY, trimmed);
+        if (!trimmed) {
+          throw new Error(
+            "Admin API key required — enter ADMIN_API_KEY from Hoibo .env.stage to unlock scenario files.",
+          );
+        }
+        return trimmed;
+      })().catch((err) => {
+        cryptoKeyInflight = null;
+        throw err;
+      });
     }
-    k = (k || "").trim();
-    if (!k) {
-      throw new Error(
-        "Admin API key required — enter ADMIN_API_KEY from FlashSale .env.stage to unlock scenario files.",
-      );
-    }
-    return k;
+    return cryptoKeyInflight;
   }
 
   /** Key for scenario-runs / field-log Edge Functions on the selected env. */
@@ -69,20 +80,28 @@
     migrateLegacyAdminKey();
     const slug = String(env || consoleEnv || "stage").toLowerCase();
     const storageKey = API_KEY_PREFIX + slug;
-    let k = sessionStorage.getItem(storageKey);
-    if (!k) {
-      k = await promptAdminKey(
-        `Supabase admin key for ${slug.toUpperCase()} (from FlashSale .env.${slug} — not the same as STAGE if PROD):`,
-      );
-      if (k) sessionStorage.setItem(storageKey, k.trim());
+    const stored = (sessionStorage.getItem(storageKey) || "").trim();
+    if (stored) return stored;
+
+    if (!supabaseKeyInflight[slug]) {
+      supabaseKeyInflight[slug] = (async () => {
+        const k = await promptAdminKey(
+          `Supabase admin key for ${slug.toUpperCase()} (from Hoibo .env.${slug} — not the same as STAGE if PROD):`,
+        );
+        const trimmed = (k || "").trim();
+        if (trimmed) sessionStorage.setItem(storageKey, trimmed);
+        if (!trimmed) {
+          throw new Error(
+            `Supabase admin key required for ${slug.toUpperCase()} — enter ADMIN_API_KEY from Hoibo .env.${slug}.`,
+          );
+        }
+        return trimmed;
+      })().catch((err) => {
+        delete supabaseKeyInflight[slug];
+        throw err;
+      });
     }
-    k = (k || "").trim();
-    if (!k) {
-      throw new Error(
-        `Supabase admin key required for ${slug.toUpperCase()} — enter ADMIN_API_KEY from FlashSale .env.${slug}.`,
-      );
-    }
-    return k;
+    return supabaseKeyInflight[slug];
   }
 
   function clearSupabaseAdminKey(env) {
@@ -183,7 +202,7 @@
     if (res.status === 401) {
       clearSupabaseAdminKey(consoleEnv);
       throw new Error(
-        `Admin key rejected for ${consoleEnv.toUpperCase()} — use ADMIN_API_KEY from FlashSale .env.${consoleEnv} (not .env.stage). Refresh and try again.`,
+        `Admin key rejected for ${consoleEnv.toUpperCase()} — use ADMIN_API_KEY from Hoibo .env.${consoleEnv} (not .env.stage). Refresh and try again.`,
       );
     }
     if (!res.ok || data.ok === false) {

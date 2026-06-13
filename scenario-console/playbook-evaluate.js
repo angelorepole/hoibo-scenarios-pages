@@ -75,7 +75,17 @@
     return { pass: false, detail: "Pull the feed while near a shop, then upload log again" };
   }
 
-  function evaluatePlaybook(scenario, { runMeta, log, runActive, fieldLogOk } = {}) {
+  function stepAudience(who) {
+    const label = String(who || "").trim();
+    if (label === "Setup" || label === "Console" || label === "Mac") return "setup";
+    if (label === "Walk" || label === "Field") return "walk";
+    if (label === "Verify" || label === "Check") return "verify";
+    if (label.toLowerCase().startsWith("optional")) return "optional";
+    if (label.toLowerCase().includes("merchant")) return "merchant";
+    return "phone";
+  }
+
+  function evaluatePlaybook(scenario, { runMeta, log, runActive, fieldLogOk, manualDone = {} } = {}) {
     const playbook = scenario.playbook || [];
     let entries = [];
     if (log != null && global.ScenarioFieldLog) {
@@ -103,26 +113,35 @@
         detail: "",
       };
 
-      if (verify === "manual") return row;
+      if (verify === "multi_day_note") {
+        if (runMeta && shops.length) row.status = "pass";
+        return row;
+      }
+
+      if (verify === "manual") {
+        if (manualDone[String(step.step)]) row.status = "pass";
+        else if (stepAudience(row.who) === "setup" && runMeta && shops.length) row.status = "pass";
+        return row;
+      }
 
       if (verify === "run_seeded") {
         const ok = Boolean(runMeta && shops.length);
         row.status = ok ? "pass" : "pending";
-        row.detail = ok ? "" : "Tap Run scenario";
+        row.detail = ok ? "" : "Waiting for Mac to run scenario";
         return row;
       }
 
       if (verify === "run_removed") {
         const ok = runActive === false;
         row.status = ok ? "pass" : "pending";
-        row.detail = ok ? "" : "Tap Finish & remove";
+        row.detail = ok ? "" : "Finish on Mac when done";
         return row;
       }
 
       if (verify === "log_pasted") {
         const ok = entries.length > 0;
         row.status = ok ? "pass" : "pending";
-        row.detail = ok ? "" : "Add Phone Log (top right)";
+        row.detail = ok ? "" : "Upload log on phone, then paste here";
         return row;
       }
 

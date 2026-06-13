@@ -5,7 +5,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body.walk-loading #env-strip,
     body.walk-loading .layout {
       display: none !important;
     }
@@ -34,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260612151444" />
+  <meta name="walk-build" content="20260613093842" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -51,21 +50,6 @@
       flex-direction: column;
     }
 
-    header nav a {
-      color: var(--accent);
-      text-decoration: none;
-      font-size: 0.85rem;
-      font-weight: 500;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-
-    header nav a img {
-      width: 14px;
-      height: 14px;
-      opacity: 0.9;
-    }
 
     #preset-seed {
       color: var(--text);
@@ -76,21 +60,15 @@
       flex: 1;
       display: grid;
       grid-template-columns: 320px 1fr;
+      grid-template-rows: auto 1fr;
       min-height: 0;
     }
 
     @media (max-width: 900px) {
       .layout {
         grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(360px, 45vh);
+        grid-template-rows: auto auto minmax(360px, 45vh);
       }
-    }
-
-    .panel {
-      padding: 1rem;
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      min-height: 0;
     }
 
     .hint {
@@ -171,6 +149,33 @@
       border-radius: var(--radius);
       padding: 0.45rem 0.6rem;
       background: var(--surface);
+      overflow: visible;
+    }
+
+    .phones-label-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .btn-link {
+      border: none;
+      background: none;
+      color: var(--accent);
+      font-size: 0.72rem;
+      padding: 0;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .btn-link:hover {
+      color: var(--text);
+    }
+
+    .phone-row > span {
+      min-width: 0;
     }
 
     .phone-row {
@@ -214,6 +219,67 @@
     .phone-row-locked .phone-locked-tag {
       color: var(--muted);
       font-size: 0.72rem;
+    }
+
+    .phone-row-unavail {
+      cursor: not-allowed;
+      opacity: 0.72;
+    }
+
+    .phone-row-unavail input:disabled {
+      cursor: not-allowed;
+    }
+
+    .phone-unavail-wrap {
+      display: inline;
+    }
+
+    .phone-unavail-tag {
+      color: #f0a0a0;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: lowercase;
+      margin-left: 0.25rem;
+    }
+
+    .phone-unavail-details {
+      display: block;
+      margin-top: 0.35rem;
+    }
+
+    .phone-unavail-details > summary {
+      list-style: none;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #f0a0a0;
+      width: fit-content;
+    }
+
+    .phone-unavail-details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .phone-unavail-details > summary::before {
+      content: "▸ ";
+    }
+
+    .phone-unavail-details[open] > summary::before {
+      content: "▾ ";
+    }
+
+    .phone-unavail-body {
+      margin-top: 0.4rem;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.72rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      color: var(--text);
+      background: #141418;
+      border: 1px solid rgba(240, 160, 160, 0.45);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      max-width: 100%;
     }
 
     .status:empty,
@@ -330,40 +396,6 @@
       border-color: var(--danger);
     }
 
-    .env-strip {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.5rem 0.75rem;
-      padding: 0.5rem 1rem;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      font-size: 0.78rem;
-    }
-    .env-strip .env-pill {
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 0.7rem;
-    }
-    .env-pill.stage { background: #1a3a2a; color: #6ee7a0; }
-    .env-pill.prod { background: #3a1a1a; color: #f0a0a0; }
-    .env-pill.local { background: #1a2a3a; color: #93c5fd; }
-    .env-target-btns button {
-      font-size: 0.72rem;
-      padding: 0.2rem 0.5rem;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .env-target-btns button.active {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
     .env-target-btns button:disabled {
       opacity: 0.45;
       cursor: not-allowed;
@@ -430,6 +462,58 @@
       padding-left: 1.1rem;
     }
 
+    .playbook-section {
+      margin-bottom: 0.65rem;
+      border-radius: 6px;
+      padding: 0.45rem 0.5rem 0.35rem;
+      border: 1px solid var(--border);
+    }
+
+    .playbook-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .playbook-section-setup {
+      background: rgba(59, 130, 246, 0.08);
+      border-color: rgba(59, 130, 246, 0.35);
+    }
+
+    .playbook-section-test_run {
+      background: rgba(34, 197, 94, 0.08);
+      border-color: rgba(34, 197, 94, 0.35);
+    }
+
+    .playbook-section-log_validation {
+      background: rgba(168, 85, 247, 0.08);
+      border-color: rgba(168, 85, 247, 0.35);
+    }
+
+    .playbook-section-head {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+
+    .playbook-section-setup .playbook-section-head {
+      color: #60a5fa;
+    }
+
+    .playbook-section-test_run .playbook-section-head {
+      color: #4ade80;
+    }
+
+    .playbook-section-log_validation .playbook-section-head {
+      color: #c084fc;
+    }
+
+    #playbook-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
     .playbook li {
       margin-bottom: 0.45rem;
       line-height: 1.4;
@@ -461,6 +545,14 @@
 
     .playbook .step-manual {
       color: var(--muted);
+    }
+
+    .playbook li.playbook-tap-done {
+      cursor: pointer;
+    }
+
+    .playbook li.playbook-tap-done:hover {
+      opacity: 0.92;
     }
 
     .playbook .step-detail {
@@ -671,27 +763,68 @@
       color: var(--muted) !important;
     }
     .shop-popup h3 {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       font-weight: 600;
-      margin-bottom: 0.15rem;
-    }
-    .shop-popup p {
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-    .popup-offer {
-      border-top: 1px solid var(--border);
-      padding: 0.45rem 0 0;
-      margin-top: 0.45rem;
-    }
-    .popup-offer p {
+      margin-bottom: 0.1rem;
       color: var(--text);
     }
+    .shop-popup-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin: 0 0 0.5rem;
+    }
+    .popup-offers {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .popup-offer {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.55rem;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .popup-offer-head {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .popup-offer-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .popup-offer-deal {
+      font-size: 0.72rem;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .popup-offer-expiry {
+      font-size: 0.68rem;
+      margin: 0.35rem 0 0;
+      line-height: 1.35;
+    }
+    .popup-offer-expiry.expiry-live {
+      color: var(--muted);
+    }
+    .popup-offer-expiry.expiry-soon {
+      color: var(--warn, #e8b84a);
+    }
+    .popup-offer-expiry.expiry-expired {
+      color: var(--danger);
+    }
     .popup-offer .btn {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       padding: 0.3rem 0.6rem;
-      margin-top: 0.25rem;
-      width: auto;
+      margin-top: 0.4rem;
+      width: 100%;
+    }
+    .popup-foot {
+      font-size: 0.68rem;
+      margin: 0.5rem 0 0;
+      padding-top: 0.45rem;
+      border-top: 1px solid var(--border);
     }
 
     /* Modal Overlay */
@@ -808,7 +941,6 @@
       font-size: 0.8rem;
     }
 
-    body.walk-loading #env-strip,
     body.walk-loading .layout {
       display: none !important;
     }
@@ -885,28 +1017,6 @@
 </head>
 
 <body class="walk-loading">
-  <header>
-    <div class="brand-lockup">
-      <img class="brand-logo" src="/hoibo-scenarios/assets/logo-orange.svg" alt="Hoibò" />
-      <div>
-        <h1>Scenarios</h1>
-        <p>Field tests on real phones — what to do and what pass looks like</p>
-      </div>
-    </div>
-    <nav>
-      <button type="button" class="btn btn-secondary font-sm mr-2" id="btn-open-log-modal" style="width: auto; padding: 0.35rem 0.75rem;">Add Phone Log</button>
-    </nav>
-  </header>
-  <div class="env-strip" id="env-strip" hidden>
-    <span>Console writes to</span>
-    <span class="env-pill stage" id="walk-env-pill">…</span>
-    <div class="env-target-btns" id="walk-env-btns">
-      <button type="button" data-target="stage" class="active">Stage</button>
-      <button type="button" data-target="prod">Prod</button>
-    </div>
-    <span class="hint" id="walk-env-msg">Run state stored in Supabase Storage on this env.</span>
-  </div>
-  <div class="view-only-banner" id="view-only-banner" hidden></div>
   <div class="walk-boot" id="walk-boot" aria-live="polite" aria-busy="true">
     <div class="walk-boot-inner">
       <div class="walk-boot-spinner" aria-hidden="true"></div>
@@ -917,8 +1027,22 @@
       </div>
     </div>
   </div>
-  <div class="layout" id="walk-layout" hidden>
-    <aside class="panel">
+  <div class="layout console-lane-stage" id="walk-layout" hidden>
+    <div class="view-only-banner" id="view-only-banner" hidden></div>
+    <header id="app-header">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/hoibo-scenarios/assets/logo-orange.svg" alt="Hoibò" />
+        <h1>Scenarios</h1>
+      </div>
+      <div class="env-target-btns" id="env-target-btns">
+        <button type="button" data-target="stage" class="active">Stage</button>
+        <button type="button" data-target="prod">Prod</button>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-secondary font-sm" id="btn-open-log-modal" style="width: auto; padding: 0.35rem 0.75rem;">Add Phone Log</button>
+      </div>
+    </header>
+    <aside class="sidebar">
       <div class="hosted-idle-hint" id="hosted-idle-hint" hidden>
         <h3>No active run</h3>
         <p class="hint mb-1">Start a scenario on the Mac Dev Console first, then refresh this page to see the map and playbook.</p>
@@ -942,7 +1066,7 @@
 
       <div class="playbook" id="playbook-preview" hidden>
         <h3 id="playbook-heading">What to do</h3>
-        <ol id="playbook-steps"></ol>
+        <div id="playbook-steps"></div>
         <div class="expect" id="playbook-expect" hidden>
           <strong>Pass looks like:</strong>
           <ul id="playbook-expect-list"></ul>
@@ -959,7 +1083,10 @@
           <div><label for="lng" class="form-label">Lng</label><input id="lng" type="number" step="any" readonly placeholder="—" /></div>
         </div>
 
-        <label class="form-label">Phones</label>
+        <div class="phones-label-row">
+          <label class="form-label mb-0">Phones</label>
+          <button type="button" class="btn-link" id="btn-refresh-phones" title="Re-check USB / Wi‑Fi connection">Refresh</button>
+        </div>
         <p class="hint mb-1" id="phones-hint">Run always fresh-installs ticked phones: customer = walk-test build (field log on), merchant = merchant app.</p>
         <div class="phone-rows" id="phone-rows">
           <p class="hint mb-0">Loading…</p>
@@ -1115,14 +1242,23 @@
   </div>
   <script src="hosted-crypto.js"></script>
   <script>
+    let adminKeyPromptInflight = null;
+
     window.__promptAdminKey = function (message) {
-      return new Promise((resolve) => {
+      if (adminKeyPromptInflight) {
+        return adminKeyPromptInflight.then((key) => {
+          if (key) return key;
+          return window.__promptAdminKey(message);
+        });
+      }
+      adminKeyPromptInflight = new Promise((resolve) => {
         const modal = document.getElementById("admin-key-modal");
         const promptEl = document.getElementById("admin-key-prompt");
         const input = document.getElementById("admin-key-input");
         const okBtn = document.getElementById("admin-key-ok");
         const cancelBtn = document.getElementById("admin-key-cancel");
         if (!modal || !input) {
+          adminKeyPromptInflight = null;
           resolve(prompt(message));
           return;
         }
@@ -1134,6 +1270,7 @@
           okBtn.onclick = null;
           cancelBtn.onclick = null;
           input.onkeydown = null;
+          adminKeyPromptInflight = null;
           resolve(value);
         };
         okBtn.onclick = () => done(input.value.trim() || null);
@@ -1146,8 +1283,10 @@
         };
         requestAnimationFrame(() => input.focus());
       });
+      return adminKeyPromptInflight;
     };
   </script>
+  <script src="/hoibo-scenarios/static/js/console-chrome.js"></script>
   <script src="hosted-bootstrap.js"></script>
   <script>
     const el = (id) => document.getElementById(id);
@@ -1165,7 +1304,6 @@
         boot.hidden = true;
         boot.setAttribute("aria-busy", "false");
       }
-      el("env-strip")?.removeAttribute("hidden");
       el("walk-layout")?.removeAttribute("hidden");
     }
 
@@ -1210,6 +1348,7 @@
     let catalog = null;
     let scenarioList = [];
     let customerPhones = [];
+    let deviceReachabilityState = null;
     let registryDevices = [];
     let envStatus = null;
     let consoleEnvLabel = "STAGE";
@@ -1228,7 +1367,40 @@
     let isSeeding = false;
     let runProgressLabel = "";
     let playbookProgress = [];
-    let lastPlaybook = { steps: [], expects: [], multiDay: false };
+    let manualDoneSteps = {};
+    let lastPlaybook = { steps: [], allSteps: [], expects: [], multiDay: false };
+    let redeemExpectedForRun = false;
+
+    function playbookExpectsRedeem(playbook) {
+      if (window.ScenarioDisplay?.playbookExpectsRedeem) {
+        return ScenarioDisplay.playbookExpectsRedeem(playbook);
+      }
+      const walk = (playbook || []).find((step) => {
+        const who = String(step?.who || "");
+        return who === "Walk" || who === "Field";
+      });
+      return walk ? String(walk.do || "").toLowerCase().includes("redeem") : false;
+    }
+
+    function syncRedeemUi(run) {
+      const playbook = run?.playbook || lastPlaybook.allSteps || [];
+      redeemExpectedForRun = playbookExpectsRedeem(playbook);
+      const block = el("redeem-phone-block");
+      if (block) {
+        block.hidden = !redeemExpectedForRun || isHostedConsole() || !currentRun;
+      }
+      const mapHint = el("map-hint");
+      if (mapHint && currentRun) {
+        mapHint.textContent = redeemExpectedForRun
+          ? "Active run — walk the pins · tap a shop to test redeem"
+          : "Active run — follow the playbook · walk near the pins (no redeem)";
+      }
+      if (redeemExpectedForRun && run) {
+        applyRedeemPhoneFromRun(run);
+      } else if (el("phone-hint")) {
+        el("phone-hint").textContent = "";
+      }
+    }
 
     const DEVICES_PICK_KEY = "walk_scenario_device_slots";
     const PHONE_PREP_KEY = "walk_scenario_phone_prep";
@@ -1348,6 +1520,53 @@
       savePhonePrepState(state);
     }
 
+    function escapeHtml(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function deviceReachabilityForSlot(slot) {
+      const rows = deviceReachabilityState?.devices || [];
+      return rows.find((d) => String(d.slot) === String(slot)) || null;
+    }
+
+    function isDeviceReachable(slot) {
+      if (typeof window.__hostedScenariosApi === "function") return true;
+      const hit = deviceReachabilityForSlot(slot);
+      if (!hit) return true;
+      return hit.reachable !== false;
+    }
+
+    function phoneUnavailableHtml(slot) {
+      const hit = deviceReachabilityForSlot(slot);
+      if (!hit || hit.reachable !== false) return "";
+      const tip = escapeHtml(hit.help || "This phone is not reachable from the Mac.");
+      return `<span class="phone-unavail-wrap"><span class="phone-unavail-tag">unavailable</span><details class="phone-unavail-details"><summary>What to do</summary><div class="phone-unavail-body">${tip}</div></details></span>`;
+    }
+
+    async function loadDeviceReachabilityIfLocal() {
+      if (typeof window.__hostedScenariosApi === "function") {
+        deviceReachabilityState = null;
+        return;
+      }
+      try {
+        const res = await fetch("/api/device-reachability", { cache: "no-store" });
+        deviceReachabilityState = await res.json();
+      } catch (_) {
+        deviceReachabilityState = null;
+      }
+    }
+
+    async function refreshPhonePanel() {
+      if (typeof window.__hostedScenariosApi === "function") return;
+      await Promise.all([loadDeviceReachabilityIfLocal(), loadDeviceBuildsIfLocal()]);
+      renderDevicePick();
+      updateRunButtons();
+    }
+
     function deviceBuildStatusForSlot(slot) {
       if (!deviceBuildState?.ok) return null;
       return deviceBuildState.devices.find((d) => d.slot === slot) || null;
@@ -1400,7 +1619,9 @@
         return;
       }
       const locked = new Set(alwaysOnSlots());
-      const saved = new Set(savedOptionalDeviceSlots());
+      const saved = new Set(
+        savedOptionalDeviceSlots().filter((slot) => isDeviceReachable(slot)),
+      );
       const prep = loadPhonePrepState();
       locked.forEach((slot) => {
         prep[slot] = true;
@@ -1411,11 +1632,15 @@
           const slot = String(d.slot);
           const isLocked = locked.has(slot);
           const warn = phonePrepStatusHtml(slot);
+          const unavail = phoneUnavailableHtml(slot);
+          const reachable = isDeviceReachable(slot);
           if (isLocked) {
-            return `<label class="phone-row phone-row-locked"><input type="checkbox" checked disabled aria-label="${d.name} always in run" /><span>${d.name} <span class="phone-locked-tag">· always in run</span>${warn ? `<br />${warn}` : ""}</span></label>`;
+            return `<label class="phone-row phone-row-locked${reachable ? "" : " phone-row-unavail"}"><input type="checkbox" checked disabled aria-label="${d.name} always in run" /><span>${d.name} <span class="phone-locked-tag">· always in run</span>${unavail}${warn ? `<br />${warn}` : ""}</span></label>`;
           }
-          const checked = saved.has(slot) ? " checked" : "";
-          return `<label class="phone-row"><input type="checkbox" data-phone-slot="${slot}" value="${slot}"${checked} /><span>${d.name}${warn ? `<br />${warn}` : ""}</span></label>`;
+          const checked = reachable && saved.has(slot) ? " checked" : "";
+          const disabled = reachable ? "" : " disabled";
+          const rowClass = reachable ? "phone-row" : "phone-row phone-row-unavail";
+          return `<label class="${rowClass}"><input type="checkbox" data-phone-slot="${slot}" value="${slot}"${checked}${disabled} /><span>${d.name}${unavail}${warn ? `<br />${warn}` : ""}</span></label>`;
         })
         .join("");
       if (hint) {
@@ -1423,11 +1648,15 @@
       }
       box.querySelectorAll("input[data-phone-slot]").forEach((inp) => {
         inp.onchange = () => {
+          if (inp.disabled) return;
           persistOptionalDevicePick();
           setPhonePrep(inp.value, inp.checked);
           syncRunDevices();
           updateRunButtons();
         };
+      });
+      box.querySelectorAll(".phone-unavail-details").forEach((details) => {
+        details.addEventListener("click", (e) => e.stopPropagation());
       });
       // Sync prep checkboxes for optional phones already ticked
       box.querySelectorAll("input[data-phone-slot]:checked").forEach((inp) => {
@@ -1436,8 +1665,17 @@
     }
 
     function phonesReadyForRun() {
-      if (!selectedDevices().length) {
+      const selected = selectedDevices();
+      if (!selected.length) {
         return { ok: false, reason: "Tick at least one phone." };
+      }
+      const blocked = selected.filter((d) => !isDeviceReachable(String(d.slot)));
+      if (blocked.length) {
+        const names = blocked.map((d) => d.name || d.slot).join(", ");
+        return {
+          ok: false,
+          reason: `${names} unavailable — tap What to do on the phone row for fixes.`,
+        };
       }
       return { ok: true };
     }
@@ -1591,6 +1829,23 @@
       presetSel.value = id;
     }
 
+    function playbookStepStatus(step, prog) {
+      if (manualDoneSteps[String(step.step)]) return "pass";
+      return prog?.status || (step.verify === "manual" ? "manual" : "pending");
+    }
+
+    function visiblePlaybookSteps(steps) {
+      const list = steps || [];
+      if (
+        isHostedConsole() &&
+        currentRun &&
+        window.ScenarioDisplay?.filterPlaybookForHosted
+      ) {
+        return ScenarioDisplay.filterPlaybookForHosted(list, true);
+      }
+      return list;
+    }
+
     function updatePlaybookHeading() {
       const heading = el("playbook-heading");
       if (!heading) return;
@@ -1598,10 +1853,16 @@
         heading.textContent = "What to do";
         return;
       }
-      const total = lastPlaybook.steps.length;
-      const passed = (playbookProgress || []).filter((p) => p.status === "pass").length;
-      const failed = (playbookProgress || []).filter((p) => p.status === "fail").length;
-      let line = `Progress — ${passed} of ${total} steps done`;
+      const steps = lastPlaybook.steps;
+      const byStep = Object.fromEntries(
+        (playbookProgress || []).map((p) => [String(p.step), p])
+      );
+      const passed = steps.filter((s) => playbookStepStatus(s, byStep[String(s.step)]) === "pass").length;
+      const failed = steps.filter((s) => playbookStepStatus(s, byStep[String(s.step)]) === "fail").length;
+      const hosted = isHostedConsole();
+      let line = hosted
+        ? `Your steps — ${passed} of ${steps.length} done`
+        : `Progress — ${passed} of ${steps.length} done`;
       if (failed) line += ` · ${failed} need attention`;
       heading.textContent = line;
     }
@@ -1635,7 +1896,7 @@
         if (actions) actions.hidden = !active;
         if (banner) banner.hidden = !active;
         if (history) history.hidden = active;
-        if (playbook && !active) playbook.hidden = false;
+        if (playbook) playbook.hidden = active ? !lastPlaybook.allSteps.length : false;
       }
 
       const phoneRows = el("phone-rows");
@@ -1649,17 +1910,11 @@
       if (runBtn) runBtn.hidden = hosted;
       if (cleanupBtn) cleanupBtn.hidden = hosted;
       if (abandonBtn) abandonBtn.hidden = hosted || !active;
-      if (el("redeem-phone-block")) {
-        el("redeem-phone-block").hidden = hosted || !active;
-      }
+      syncRedeemUi(currentRun);
       el("btn-gps")?.toggleAttribute("disabled", hosted || active);
 
       if (categorySel) categorySel.disabled = active || isSeeding || (hosted && !active);
       if (presetSel) presetSel.disabled = active || isSeeding || (hosted && !active);
-
-      el("walk-env-btns")?.querySelectorAll("button").forEach((btn) => {
-        btn.disabled = active && canControlRuns();
-      });
 
       if (active && banner) {
         const label =
@@ -1682,7 +1937,9 @@
       const mapHint = el("map-hint");
       if (mapHint) {
         if (active) {
-          mapHint.textContent = "Active run — walk the pins · tap a shop for test redeem";
+          mapHint.textContent = redeemExpectedForRun
+            ? "Active run — walk the pins · tap a shop to test redeem"
+            : "Active run — follow the playbook · walk near the pins (no redeem)";
         } else if (hosted) {
           mapHint.textContent = "No active run — map fills when Mac starts a scenario.";
         } else {
@@ -1759,6 +2016,30 @@
       if (box) box.hidden = true;
     }
 
+    function formatRunSummary(run, radiusM) {
+      const title = `Run ${run.short_id} — ${run.scenario_label || run.preset_label}`;
+      const seed =
+        run.seed_line || `${run.shop_count} merchants, ${run.offer_count || "?"} offers`;
+      const centre = run.center
+        ? `${run.center.lat.toFixed(5)}, ${run.center.lng.toFixed(5)}`
+        : "—";
+      const bullets = [
+        `• Seed: ${seed}`,
+        `• Centre: ${centre}`,
+        `• Radius: ${radiusM} m`,
+      ];
+      if (run.summary) bullets.push(`• Walk: ${run.summary}`);
+      if (run.purpose && run.purpose !== run.summary) {
+        bullets.push(`• Goal: ${run.purpose}`);
+      }
+      if (run.multi_day) {
+        bullets.push("• Multi-day: do NOT cleanup until playbook finished.");
+      }
+      const ids = (run.acceptance_ids || []).filter(Boolean).join(", ");
+      if (ids) bullets.push(`• IDs: ${ids}`);
+      return `${title}\n\n${bullets.join("\n")}`;
+    }
+
     function setStatus(msg, ok) {
       if (!msg) {
         statusEl.textContent = "";
@@ -1770,6 +2051,11 @@
     }
 
     async function api(path, opts) {
+      opts = opts || {};
+      const method = (opts.method || "GET").toUpperCase();
+      if (method === "GET" && opts.cache == null) {
+        opts = { ...opts, cache: "no-store" };
+      }
       if (typeof window.__hostedScenariosApi === "function") {
         return window.__hostedScenariosApi(path, opts);
       }
@@ -1979,6 +2265,24 @@
       map.setView([51.5074, -0.2214], 13);
     }
 
+    function scenarioRadiusM(p) {
+      if (p && p.radiusM != null && !Number.isNaN(Number(p.radiusM))) {
+        return Number(p.radiusM);
+      }
+      return catalog.defaultRadiusM || 800;
+    }
+
+    function applyScenarioRadius(p) {
+      radiusM = scenarioRadiusM(p);
+      el("map-hint").textContent = `${radiusM} m shop radius · console → ${consoleEnvLabel}`;
+      if (!hasCenter || !map) return;
+      const lat = parseFloat(el("lat").value);
+      const lng = parseFloat(el("lng").value);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+      drawRadiusCircle(lat, lng);
+      map.fitBounds(radiusCircle.getBounds(), { padding: [32, 32], maxZoom: 15 });
+    }
+
     function drawRadiusCircle(lat, lng) {
       if (radiusCircle) map.removeLayer(radiusCircle);
       radiusCircle = L.circle([lat, lng], {
@@ -2029,6 +2333,7 @@
         return;
       }
       currentRun = run;
+      redeemExpectedForRun = playbookExpectsRedeem(run.playbook || []);
       syncPresetFromRun(run);
       clearShopMarkers();
 
@@ -2046,28 +2351,16 @@
       list.innerHTML = ""; // Empty sidebar list since redeem elements are now in the map popup
 
       run.shops.forEach((shop, shopIndex) => {
-        const role = shop.role ? ` · ${shop.role}` : "";
-        
-        let offersHtml = "";
-        shop.offers.forEach((offer, offerIndex) => {
-          offersHtml += `
-            <div class="popup-offer">
-              <p class="font-sm mb-1">${offer.title}</p>
-              <button type="button" class="btn btn-primary" onclick="redeemShop(${shopIndex}, ${offerIndex}, this)">Redeem (real API)</button>
-            </div>
-          `;
-        });
-        
-        const popupHtml = `
-          <div class="shop-popup">
-            <h3>${shop.trading_name}</h3>
-            <p class="mb-2">${shop.category}${role}</p>
-            ${offersHtml}
-          </div>
-        `;
+        const popupOpts = {
+          redeemExpected: redeemExpectedForRun,
+          run,
+        };
+        const buildPopup = () =>
+          window.ScenarioDisplay.formatShopPopupHtml(shop, shopIndex, popupOpts);
 
         const m = L.marker([shop.lat, shop.lng], { icon: shopPinIcon }).addTo(map)
-          .bindPopup(popupHtml);
+          .bindPopup(buildPopup());
+        m.on("popupopen", () => m.setPopupContent(buildPopup()));
 
         shopMarkers.push(m);
         bounds.push([shop.lat, shop.lng]);
@@ -2078,19 +2371,11 @@
         refreshMapSize();
       }
 
-      el("redeem-phone-block").hidden = false;
-      applyRedeemPhoneFromRun(run);
+      syncRedeemUi(run);
 
-      const centre = run.center
-        ? `${run.center.lat.toFixed(5)}, ${run.center.lng.toFixed(5)}`
-        : "—";
       renderPlaybook(run.playbook || [], run.field_log_expect || [], run.multi_day);
-      const multi = run.multi_day ? "\nMulti-day: do NOT cleanup until playbook finished." : "";
-      const seed = run.seed_line || `${run.shop_count} merchants, ${run.offer_count || "?"} offers`;
-      setStatus(
-        `Run ${run.short_id} — ${run.scenario_label || run.preset_label}\nSeed: ${seed}\nCentre ${centre} · ${r} m radius.\n${run.summary || ""}${multi}\nIDs: ${(run.acceptance_ids || []).join(", ")}`,
-        true
-      );
+      syncRedeemUi(run);
+      setStatus(formatRunSummary(run, r), true);
       updateRunButtons();
       updateCleanupHint(run);
       applyRunDevicesToPick(run.devices);
@@ -2133,22 +2418,49 @@
     }
 
     function paintPlaybookList() {
-      const ol = el("playbook-steps");
+      const container = el("playbook-steps");
       const steps = lastPlaybook.steps;
       const byStep = Object.fromEntries(
         (playbookProgress || []).map((p) => [String(p.step), p])
       );
-      ol.innerHTML = "";
-      steps.forEach((s) => {
-        const li = document.createElement("li");
-        const prog = byStep[String(s.step)];
-        const mark = prog ? stepMark(prog.status) : stepMark(s.verify === "manual" ? "manual" : "pending");
-        const detail =
-          prog?.detail && prog.status !== "pass" && prog.verify !== "manual"
-            ? `<span class="step-detail">${prog.detail}</span>`
-            : "";
-        li.innerHTML = `${mark}<span class="who">${s.who || "Step"}</span> — ${s.do}${detail}`;
-        ol.appendChild(li);
+      container.innerHTML = "";
+      const groups = window.ScenarioDisplay?.groupPlaybookBySection
+        ? ScenarioDisplay.groupPlaybookBySection(steps)
+        : [{ id: "all", label: "", steps }];
+      groups.forEach((group) => {
+        const block = document.createElement("div");
+        block.className = group.id === "all"
+          ? "playbook-section"
+          : `playbook-section playbook-section-${group.id}`;
+        if (group.label) {
+          const head = document.createElement("div");
+          head.className = "playbook-section-head";
+          head.textContent = group.label;
+          block.appendChild(head);
+        }
+        const ol = document.createElement("ol");
+        group.steps.forEach((s) => {
+          const li = document.createElement("li");
+          const prog = byStep[String(s.step)];
+          const status = playbookStepStatus(s, prog);
+          const mark = stepMark(status);
+          const detail =
+            prog?.detail && status !== "pass" && s.verify !== "manual"
+              ? `<span class="step-detail">${prog.detail}</span>`
+              : "";
+          li.innerHTML = `${mark}<span class="who">${s.who || "Step"}</span> — ${s.do}${detail}`;
+          if (status === "manual") {
+            li.classList.add("playbook-tap-done");
+            li.title = "Tap when you have done this step";
+            li.addEventListener("click", () => {
+              manualDoneSteps[String(s.step)] = true;
+              paintPlaybookList();
+            });
+          }
+          ol.appendChild(li);
+        });
+        block.appendChild(ol);
+        container.appendChild(block);
       });
       updatePlaybookHeading();
     }
@@ -2173,18 +2485,19 @@
       const box = el("playbook-preview");
       const expectBox = el("playbook-expect");
       const expectList = el("playbook-expect-list");
-      lastPlaybook = { steps: steps || [], expects: expects || [], multiDay: !!multiDay };
-      if (!steps.length) {
+      const allSteps = steps || [];
+      lastPlaybook = {
+        steps: visiblePlaybookSteps(allSteps),
+        allSteps,
+        expects: expects || [],
+        multiDay: !!multiDay,
+      };
+      if (!allSteps.length) {
         box.hidden = true;
         return;
       }
       box.hidden = false;
       paintPlaybookList();
-      if (multiDay) {
-        const li = document.createElement("li");
-        li.innerHTML = '<span class="who">Important</span> — Keep scenario on STAGE until all days done.';
-        ol.appendChild(li);
-      }
       if (expects && expects.length) {
         expectBox.hidden = false;
         expectList.innerHTML = "";
@@ -2292,7 +2605,7 @@
     }
 
     function devicesShVar(slot) {
-      return slot === "user" ? "FLASHSALE_USER_APP_ID" : "FLASHSALE_USER2_APP_ID";
+      return slot === "user" ? "HOIBO_USER_APP_ID" : "HOIBO_USER2_APP_ID";
     }
 
     function updatePhoneHint(fixedPhone) {
@@ -2508,6 +2821,7 @@
         el("preset-seed").textContent = p.seedLine
           ? `On map after Run: ${p.seedLine}`
           : "";
+        if (!currentRun) applyScenarioRadius(p);
         renderPlaybook(p.playbook || [], p.passCriteria || p.fieldLogExpect || [], p.multiDay);
         if (!currentRun) {
           resetOptionalDevicePick();
@@ -2664,16 +2978,9 @@
       }
     }
 
-    async function setConsoleTarget(target) {
-      await api("/api/environment/target", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target }),
-      });
+    async function refreshAfterWalkTargetChange() {
       const envRes = await api("/api/environment");
-      consoleEnvLabel = envRes?.console?.label || target.toUpperCase();
-      consoleEnvSlug = (envRes?.console?.env || target || "stage").toLowerCase();
-      renderWalkEnv(envRes);
+      applyWalkEnvironment(envRes);
       renderDevicePick();
       currentRun = null;
       clearShopMarkers();
@@ -2683,6 +2990,8 @@
       try {
         const phonesRes = await api("/api/scenarios/phones");
         fillPhones(phonesRes.phones || []);
+        await loadDeviceReachabilityIfLocal();
+        renderDevicePick();
       } catch (_) { /* keep prior list */ }
       updateRunButtons();
       await loadRunHistory();
@@ -2696,20 +3005,16 @@
       );
     }
 
-    function renderWalkEnv(envRes) {
-      const pill = el("walk-env-pill");
-      const env = envRes?.console?.env || "stage";
-      pill.textContent = envRes?.console?.label || env.toUpperCase();
-      pill.className = "env-pill " + (env === "prod" ? "prod" : env === "local" ? "local" : "stage");
-      el("walk-env-btns").querySelectorAll("button").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.target === env);
-      });
-      const msg = el("walk-env-msg");
-      if (envRes?.mismatch) {
-        msg.textContent = envRes.message || "Env mismatch — align app build with console target.";
-      } else {
-        msg.textContent = "Run JSON in Supabase Storage · shops in DB when scenario is running.";
-      }
+    async function setConsoleTarget(target) {
+      await HoiboConsoleChrome.postConsoleTarget(target);
+      await refreshAfterWalkTargetChange();
+    }
+
+    function applyWalkEnvironment(envRes) {
+      envStatus = envRes;
+      consoleEnvLabel = envRes?.console?.label || "STAGE";
+      consoleEnvSlug = (envRes?.console?.env || "stage").toLowerCase();
+      HoiboConsoleChrome.applyEnvironmentChrome(envRes);
     }
 
     function resolveFinishOutcomeFromLog() {
@@ -3003,6 +3308,14 @@
     el("btn-fetch-cloud-log").onclick = fetchCloudLog;
 
     el("btn-run").onclick = runScenario;
+    el("btn-refresh-phones")?.addEventListener("click", () => {
+      refreshPhonePanel().catch((err) => setStatus(String(err.message || err), false));
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        refreshPhonePanel().catch(() => {});
+      }
+    });
     el("btn-cleanup").onclick = cleanupRun;
     el("btn-abandon").onclick = abandonRun;
 
@@ -3051,12 +3364,22 @@
         ]);
 
         setBootStep("Loading scenario list…");
-        envStatus = envRes;
-        consoleEnvLabel = envRes?.console?.label || "STAGE";
-        consoleEnvSlug = (envRes?.console?.env || "stage").toLowerCase();
-        renderWalkEnv(envRes);
-        el("walk-env-btns").querySelectorAll("button").forEach((btn) => {
-          btn.onclick = () => setConsoleTarget(btn.dataset.target);
+        HoiboConsoleChrome.configure({
+          fetchJson: (path, opts) => api(path, opts),
+          postTarget: (target) =>
+            api("/api/environment/target", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ target }),
+            }),
+        });
+        applyWalkEnvironment(envRes);
+        HoiboConsoleChrome.wireConsoleTargetButtons(async () => {
+          try {
+            await refreshAfterWalkTargetChange();
+          } catch (err) {
+            setStatus(String(err.message || err), false);
+          }
         });
 
         catalog = catalogRes.catalog;
@@ -3077,8 +3400,9 @@
         fillPresets();
 
         if (!isHostedConsole()) {
-          setBootStep("Checking app installs on phones…");
-          await loadDeviceBuildsIfLocal();
+          setBootStep("Checking phones on this Mac…");
+          await Promise.all([loadDeviceBuildsIfLocal(), loadDeviceReachabilityIfLocal()]);
+          renderDevicePick();
         }
 
         finishBoot();

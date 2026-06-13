@@ -18,6 +18,39 @@
   --alert: #ffb4bc;
   --radius: 12px;
   --font: "DM Sans", system-ui, sans-serif;
+  /* Lane chrome — overridden on .layout.console-lane-stage | prod */
+  --lane-chrome: #0f0f12;
+  --lane-chrome-deep: #0a0a0e;
+  --lane-chrome-border: #2e2e38;
+  --lane-accent: var(--accent);
+  --lane-accent-dim: var(--accent-dim);
+}
+
+.layout.console-lane-stage,
+body.console-lane-stage {
+  --lane-chrome: #0e1c18;
+  --lane-chrome-deep: #081412;
+  --lane-chrome-border: #2d6a5a;
+  --lane-accent: #5eead4;
+  --lane-accent-dim: #5eead422;
+}
+
+.layout.console-lane-prod,
+body.console-lane-prod {
+  --lane-chrome: #1a1018;
+  --lane-chrome-deep: #110a10;
+  --lane-chrome-border: #7a3058;
+  --lane-accent: #f9a8d4;
+  --lane-accent-dim: #f9a8d422;
+}
+
+.layout.console-lane-local,
+body.console-lane-local {
+  --lane-chrome: #0e1520;
+  --lane-chrome-deep: #0a1018;
+  --lane-chrome-border: #2a4a6e;
+  --lane-accent: #8ab4f8;
+  --lane-accent-dim: #8ab4f822;
 }
 
 * {
@@ -35,13 +68,43 @@ body {
 
 /* Header & Brand Lockup */
 header {
-  display: flex;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  border-bottom: 1px solid var(--lane-chrome-border);
+  background: var(--lane-chrome);
   gap: 1rem;
+}
+
+header.prod-locked {
+  box-shadow: inset 0 -2px 0 #ffb020;
+}
+
+.env-target-btns {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-self: center;
+}
+
+.env-target-btns button {
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--lane-chrome-border);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.env-target-btns button.active {
+  border-color: var(--lane-accent);
+  background: var(--lane-accent-dim);
+  color: var(--lane-accent);
 }
 
 .brand-lockup {
@@ -49,6 +112,7 @@ header {
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
+  justify-self: start;
 }
 
 .brand-lockup img.brand-logo {
@@ -56,6 +120,42 @@ header {
   width: auto;
   display: block;
   flex-shrink: 0;
+}
+
+.header-status {
+  justify-self: end;
+  text-align: right;
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.header-actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.header-actions a,
+.header-actions .btn {
+  font-size: 0.82rem;
+}
+
+.header-actions a {
+  color: var(--lane-accent);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.header-actions a img {
+  width: 14px;
+  height: 14px;
+  opacity: 0.9;
 }
 
 header h1 {
@@ -68,6 +168,19 @@ header p {
   font-size: 0.75rem;
   color: var(--muted);
   margin-top: 0.15rem;
+}
+
+/* Lane sidebar — dev console + scenario console */
+.sidebar {
+  padding: 1rem;
+  border-right: 1px solid var(--lane-chrome-border);
+  background: var(--lane-chrome);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.view-only-banner {
+  grid-column: 1 / -1;
 }
 
 /* Common Form & Input elements */

@@ -36,7 +36,7 @@ async function decryptScenarioJsonEnvelope(adminKey, envelope) {
     const msg = String(e?.message || e);
     if (name === "OperationError" || /operation-specific reason/i.test(msg)) {
       throw new Error(
-        "Wrong admin API key for encrypted files — use ADMIN_API_KEY from FlashSale .env.stage (same key used when GitHub Pages was built).",
+        "Wrong admin API key for encrypted files — use ADMIN_API_KEY from Hoibo .env.stage (same key used when GitHub Pages was built).",
       );
     }
     throw e;

@@ -1,6 +1,69 @@
 // AUTO-GENERATED — run scripts/merge_scenario_packs.py after editing scenario packs
 (function (global) {
   const WALK_FIELD_LOG_RULES = {
+  "commute-area-3km": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "offer-radius-density",
+      "description": "Enough offers inside user offer-radius setting",
+      "where": {
+        "offerRadiusDensityMet": true
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
+  "commute-area-5km": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "offer-radius-density",
+      "description": "Enough offers inside user offer-radius setting",
+      "where": {
+        "offerRadiusDensityMet": true
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
+  "commute-area-10km": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "offer-radius-density",
+      "description": "Enough offers inside user offer-radius setting",
+      "where": {
+        "offerRadiusDensityMet": true
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
   "below-gate": [
     {
       "id": "offers-loaded",
@@ -86,11 +149,88 @@
       }
     }
   ],
+  "food-affinity-3day": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "walking-near-offers",
+      "where": {
+        "minOfferCount": 1,
+        "activity": [
+          "walking",
+          "stationary",
+          "unknown"
+        ]
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
+  "category-off": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "engine-ran-walking",
+      "description": "Engine evaluated while on foot (copy check manual)",
+      "where": {
+        "minOfferCount": 1,
+        "activity": [
+          "walking",
+          "stationary",
+          "unknown"
+        ]
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
   "driving-suppress": [
     {
       "id": "driving-hs05",
       "where": {
         "hardSuppressRule": "HS-05"
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
+  "blacklist-merchant": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "engine-ran-walking",
+      "description": "Engine evaluated while on foot (hidden merchant copy manual)",
+      "where": {
+        "minOfferCount": 1,
+        "activity": [
+          "walking",
+          "stationary",
+          "unknown"
+        ]
       },
       "expect": {
         "minMatches": 1
@@ -168,6 +308,42 @@
       }
     }
   ],
+  "bootstrap-handoff": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "walking-near-offers",
+      "where": {
+        "minOfferCount": 1,
+        "activity": [
+          "walking",
+          "stationary",
+          "unknown"
+        ]
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
+  "lunch-ignore-3day": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
   "parcel-run": [
     {
       "id": "parcel-walking",
@@ -179,6 +355,17 @@
           "stationary",
           "unknown"
         ]
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
+  "context-block-6h": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
       },
       "expect": {
         "minMatches": 1
@@ -231,9 +418,10 @@
     },
     {
       "id": "engagement-defer-high-score",
-      "description": "After feed/map engagement, gate defers even with score >= 70",
+      "description": "After feed engagement, gate defers even with score \u2265 70",
       "where": {
         "gateDecision": "defer",
+        "deferReason": "engagement_cooldown",
         "minIntentScore": 70
       },
       "expect": {
@@ -265,9 +453,10 @@
     },
     {
       "id": "engagement-defer-high-score",
-      "description": "After map pan or pin tap, gate defers even with score >= 70",
+      "description": "After map pan or pin tap, gate defers even with score \u2265 70",
       "where": {
         "gateDecision": "defer",
+        "deferReason": "engagement_cooldown",
         "minIntentScore": 70
       },
       "expect": {
@@ -313,10 +502,10 @@
       }
     }
   ],
-  "car-to-walk": [
+  "commute-to-walk": [
     {
       "id": "commute-to-walk",
-      "description": "Walking after commute / car session",
+      "description": "Walking after commute / transit session",
       "where": {
         "commuteToWalk": true,
         "activity": "walking"
@@ -348,9 +537,157 @@
         "minMatches": 1
       }
     }
+  ],
+  "stochastic-skip": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "stochastic-block",
+      "description": "Gate allow but stochastic coin skipped delivery",
+      "where": {
+        "gateDecision": "allow",
+        "minIntentScore": 70,
+        "deliveryBlockReason": "stochastic_skip"
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
+  "disengaged-allow-60": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
   ]
 };
   const WALK_ENGINE_PASS_IF_ANY = {
+  "commute-area-3km": [
+    {
+      "id": "movement-or-commute",
+      "description": "Walking or commute session while crossing the area",
+      "rules": [
+        {
+          "id": "walking",
+          "where": {
+            "activity": "walking"
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "commute-walk",
+          "where": {
+            "commuteToWalk": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "on-route",
+          "where": {
+            "onRouteOnTime": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
+  "commute-area-5km": [
+    {
+      "id": "movement-or-commute",
+      "description": "Walking or commute session while crossing the area",
+      "rules": [
+        {
+          "id": "walking",
+          "where": {
+            "activity": "walking"
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "commute-walk",
+          "where": {
+            "commuteToWalk": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "on-route",
+          "where": {
+            "onRouteOnTime": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
+  "commute-area-10km": [
+    {
+      "id": "movement-or-commute",
+      "description": "Walking or commute session while crossing the area",
+      "rules": [
+        {
+          "id": "walking",
+          "where": {
+            "activity": "walking"
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "commute-walk",
+          "where": {
+            "commuteToWalk": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "on-route",
+          "where": {
+            "onRouteOnTime": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "station-cluster",
+          "where": {
+            "nearStationCluster": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
   "walk-allow": [
     {
       "id": "delivery-path",
@@ -414,11 +751,59 @@
       ]
     }
   ],
+  "food-affinity-3day": [
+    {
+      "id": "affinity-signal",
+      "description": "Food affinity in score breakdown OR strong allow",
+      "rules": [
+        {
+          "id": "affinity-boost",
+          "where": {
+            "minScoreAffinity": 1
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "allow-strong",
+          "where": {
+            "gateDecision": "allow",
+            "minIntentScore": 70,
+            "activity": [
+              "walking",
+              "stationary",
+              "unknown"
+            ]
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
   "quiet-allow": [
     {
       "id": "quiet-or-deliver",
-      "description": "Would deliver (quiet or ping) OR allow score \u2265 70",
+      "description": "Quiet plan, would deliver, OR allow score \u2265 70",
       "rules": [
+        {
+          "id": "quiet-plan",
+          "where": {
+            "gateDecision": "allow",
+            "planStyle": "quiet",
+            "minIntentScore": 70,
+            "activity": [
+              "walking",
+              "stationary",
+              "unknown"
+            ]
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
         {
           "id": "would-deliver",
           "where": {
@@ -434,7 +819,7 @@
           }
         },
         {
-          "id": "allow-quiet",
+          "id": "allow-band",
           "where": {
             "gateDecision": "allow",
             "minIntentScore": 70,
@@ -454,13 +839,23 @@
   "bootstrap-day3": [
     {
       "id": "bootstrap-score-or-deliver",
-      "description": "Row 17 boost visible OR allow/deliver during lunch walk",
+      "description": "Row 17 boost OR allow/deliver \u2265 70 during lunch walk",
       "rules": [
+        {
+          "id": "bootstrap-boost",
+          "where": {
+            "inLunchWindow": true,
+            "minBootstrapBoost": 0.5
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
         {
           "id": "allow-lunch",
           "where": {
             "gateDecision": "allow",
-            "minIntentScore": 60,
+            "minIntentScore": 70,
             "inLunchWindow": true
           },
           "expect": {
@@ -480,10 +875,136 @@
       ]
     }
   ],
+  "bootstrap-handoff": [
+    {
+      "id": "disengaged-allow",
+      "description": "Day 6+ disengaged allow at 60\u201369 OR verbose threshold 60",
+      "rules": [
+        {
+          "id": "allow-60-band",
+          "where": {
+            "gateDecision": "allow",
+            "minIntentScore": 60,
+            "maxIntentScore": 69
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "threshold-60",
+          "where": {
+            "minAllowThreshold": 60,
+            "maxAllowThreshold": 60
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
+  "lunch-ignore-3day": [
+    {
+      "id": "moment-blocked",
+      "description": "Moment learning blocks delivery despite allow",
+      "rules": [
+        {
+          "id": "moment-suppressed",
+          "where": {
+            "deliveryBlockReason": "moment_suppressed"
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "plan-none-after-allow",
+          "where": {
+            "gateDecision": "allow",
+            "planStyle": "none",
+            "wouldDeliver": false
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
+  "parcel-run": [
+    {
+      "id": "parcel-allow",
+      "description": "Allow \u2265 70 or would deliver on errand walk",
+      "rules": [
+        {
+          "id": "allow-band",
+          "where": {
+            "gateDecision": "allow",
+            "minIntentScore": 70,
+            "activity": [
+              "walking",
+              "stationary",
+              "unknown"
+            ]
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "would-deliver",
+          "where": {
+            "wouldDeliver": true,
+            "activity": [
+              "walking",
+              "stationary",
+              "unknown"
+            ]
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
+  "context-block-6h": [
+    {
+      "id": "second-ping-blocked",
+      "description": "Same caf\u00e9 context blocks repeat ping",
+      "rules": [
+        {
+          "id": "second-ping-denied",
+          "where": {
+            "deliveryBlockReason": [
+              "second_ping_denied",
+              "frequency_cap",
+              "peak_band_hold"
+            ]
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "quiet-instead-of-ping",
+          "where": {
+            "gateDecision": "allow",
+            "planStyle": "quiet",
+            "minIntentScore": 70
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
   "visit-wake": [
     {
-      "id": "visit-or-slot",
-      "description": "Visit wake OR learned slot strength",
+      "id": "visit-or-learned",
+      "description": "Visit wake OR learned place at eval",
       "rules": [
         {
           "id": "visit-wake",
@@ -495,9 +1016,14 @@
           }
         },
         {
-          "id": "learned-slot",
+          "id": "learned-place",
           "where": {
-            "minSlotStrength": 0.5
+            "learnedPlaceKind": [
+              "home",
+              "work",
+              "regular_activity"
+            ],
+            "minLearnedPlaceRetention": 1
           },
           "expect": {
             "minMatches": 1
@@ -524,6 +1050,35 @@
           "id": "station-cluster",
           "where": {
             "nearStationCluster": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
+  "disengaged-allow-60": [
+    {
+      "id": "disengaged-allow",
+      "description": "Allow in 60\u201369 band OR verbose threshold 60",
+      "rules": [
+        {
+          "id": "allow-60-band",
+          "where": {
+            "gateDecision": "allow",
+            "minIntentScore": 60,
+            "maxIntentScore": 69
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "threshold-60",
+          "where": {
+            "minAllowThreshold": 60,
+            "maxAllowThreshold": 60
           },
           "expect": {
             "minMatches": 1
