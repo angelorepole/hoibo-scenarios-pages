@@ -253,6 +253,7 @@
       (path === "/api/scenarios/run" && (method === "POST" || method === "PATCH")) ||
       (path === "/api/scenarios/prepare-devices" && method === "POST") ||
       (path === "/api/scenarios/abandon" && method === "POST") ||
+      (path === "/api/scenarios/refresh-seed" && method === "POST") ||
       (path === "/api/scenarios/cleanup" && method === "POST") ||
       (path === "/api/scenarios/redeem" && method === "POST");
     if (macOnlyPaths) rejectMacOnly();

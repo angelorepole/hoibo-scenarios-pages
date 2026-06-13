@@ -33,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260613095031" />
+  <meta name="walk-build" content="20260613172834" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios/static/pin-orange.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios/assets/pin-orange.svg" />
@@ -1105,6 +1105,7 @@
           <p class="hint" id="phone-hint"></p>
         </div>
 
+        <button type="button" class="btn btn-secondary" id="btn-refresh-seed" disabled hidden>Refresh offers</button>
         <button type="button" class="btn btn-danger" id="btn-cleanup" disabled>Finish &amp; remove</button>
         <button type="button" class="btn btn-secondary" id="btn-abandon" disabled hidden>Abandon run</button>
         <p class="hint" id="cleanup-hint"></p>
@@ -1906,9 +1907,11 @@
 
       const runBtn = el("btn-run");
       const cleanupBtn = el("btn-cleanup");
+      const refreshSeedBtn = el("btn-refresh-seed");
       const abandonBtn = el("btn-abandon");
       if (runBtn) runBtn.hidden = hosted;
       if (cleanupBtn) cleanupBtn.hidden = hosted;
+      if (refreshSeedBtn) refreshSeedBtn.hidden = hosted || !active;
       if (abandonBtn) abandonBtn.hidden = hosted || !active;
       syncRedeemUi(currentRun);
       el("btn-gps")?.toggleAttribute("disabled", hosted || active);
@@ -1954,6 +1957,7 @@
     function updateRunButtons() {
       const runBtn = el("btn-run");
       const cleanupBtn = el("btn-cleanup");
+      const refreshSeedBtn = el("btn-refresh-seed");
       const abandonBtn = el("btn-abandon");
       const hint = el("run-hint");
       const env = consoleEnvLabel || "STAGE";
@@ -1971,6 +1975,7 @@
         runBtn.disabled = true;
         runBtn.textContent = `Resetting phones…`;
         cleanupBtn.disabled = true;
+        if (refreshSeedBtn) refreshSeedBtn.disabled = true;
         if (abandonBtn) abandonBtn.disabled = true;
         if (hint) hint.hidden = true;
         return;
@@ -1981,6 +1986,10 @@
         : `Run scenario on ${env}`;
       runBtn.disabled = !hasCenter || !!currentRun || !phonesReadyForRun().ok;
       cleanupBtn.disabled = !currentRun;
+      if (refreshSeedBtn) {
+        refreshSeedBtn.hidden = !currentRun;
+        refreshSeedBtn.disabled = !currentRun;
+      }
       if (abandonBtn) {
         abandonBtn.hidden = !currentRun;
         abandonBtn.disabled = !currentRun;
@@ -3108,6 +3117,33 @@
       }
     }
 
+    async function refreshRunSeed() {
+      if (!canControlRuns()) {
+        setStatus("Refresh offers is Mac-only — open Dev Console → Walk scenarios.", false);
+        return;
+      }
+      if (!currentRun) return;
+      if (!confirm(`Refresh offer expiry for run ${currentRun.short_id}?\n\nSame shops and deals — new expiry times. Then pull feed on the phone.`)) return;
+      const btn = el("btn-refresh-seed");
+      if (btn) btn.disabled = true;
+      try {
+        const data = await api("/api/scenarios/refresh-seed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ run_id: currentRun.run_id }),
+        });
+        if (data.run) {
+          showRun(data.run);
+        }
+        setStatus(data.seedOutput || "Offers refreshed — pull feed on phone.", true);
+        refreshPlaybookStatus();
+      } catch (e) {
+        setStatus(String(e.message || e), false);
+      } finally {
+        if (btn) btn.disabled = !currentRun;
+      }
+    }
+
     async function abandonRun() {
       if (!canControlRuns()) {
         setStatus("Abandon is Mac-only — open Dev Console → Walk scenarios.", false);
@@ -3316,6 +3352,7 @@
         refreshPhonePanel().catch(() => {});
       }
     });
+    el("btn-refresh-seed").onclick = refreshRunSeed;
     el("btn-cleanup").onclick = cleanupRun;
     el("btn-abandon").onclick = abandonRun;
 
