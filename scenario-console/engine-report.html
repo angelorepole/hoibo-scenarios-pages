@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Engine report — Hoibò</title>
+  <link rel="stylesheet" href="/static/css/console.css" />
+  <style>
+    body { max-width: 52rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .top a { color: var(--accent); font-size: 0.85rem; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
+    .meta { color: var(--muted); font-size: 0.8rem; margin-bottom: 1rem; }
+    .hero {
+      padding: 1.25rem 1.35rem;
+      border-radius: var(--radius);
+      border: 2px solid var(--border);
+      margin-bottom: 1.25rem;
+    }
+    .hero.working { border-color: var(--success); background: rgba(46, 160, 67, 0.08); }
+    .hero.not_working { border-color: var(--danger); background: rgba(248, 81, 73, 0.08); }
+    .hero.blocked { border-color: #c9a227; background: rgba(201, 162, 39, 0.08); }
+    .hero-status {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+    .hero.working .hero-status { color: var(--success); }
+    .hero.not_working .hero-status { color: var(--danger); }
+    .hero.blocked .hero-status { color: #c9a227; }
+    .hero h2 { font-size: 1.45rem; margin: 0 0 0.35rem; line-height: 1.25; }
+    .hero .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.75rem; }
+    .hero ul { margin: 0 0 0.85rem; padding-left: 1.1rem; font-size: 0.9rem; line-height: 1.45; }
+    .hero .next {
+      font-size: 0.88rem;
+      padding: 0.65rem 0.75rem;
+      background: var(--bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .hero .next strong { color: var(--accent); }
+    section { margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    section h2 { font-size: 0.95rem; margin: 0 0 0.5rem; }
+    ul.plain { margin: 0; padding-left: 1.1rem; font-size: 0.82rem; line-height: 1.5; }
+    details.fold { margin-bottom: 1rem; font-size: 0.82rem; }
+    details.fold summary { cursor: pointer; color: var(--muted); }
+    .empty { color: var(--muted); font-size: 0.85rem; }
+    .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .actions button { font-size: 0.78rem; padding: 0.4rem 0.7rem; }
+    .check-line.pass { color: var(--success); }
+    .check-line.fail { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h1>Intent engine report</h1>
+      <p class="meta" id="meta">Loading…</p>
+    </div>
+    <a href="index.html">← Back to walk</a>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn btn-secondary" id="btn-copy">Copy full report</button>
+  </div>
+  <div id="hero"></div>
+  <div id="content"></div>
+  <p class="empty" id="empty" hidden>
+    No report loaded. On the walk page: pick phone → <strong>Engine report</strong>.
+  </p>
+  <script>
+    const STORAGE_KEY = "hoibo_engine_report";
+
+    function heroSection(er) {
+      const div = document.createElement("div");
+      div.className = "hero " + (er.status || "blocked");
+      const status = document.createElement("div");
+      status.className = "hero-status";
+      status.textContent =
+        er.status === "working" ? "Working" :
+        er.status === "not_working" ? "Not working" : "Blocked";
+      div.appendChild(status);
+      const h = document.createElement("h2");
+      h.textContent = er.headline || "No verdict";
+      div.appendChild(h);
+      const sub = document.createElement("p");
+      sub.className = "sub";
+      sub.textContent = er.subhead || "";
+      div.appendChild(sub);
+      const ul = document.createElement("ul");
+      (er.bullets || []).forEach((b) => {
+        const li = document.createElement("li");
+        li.textContent = b;
+        ul.appendChild(li);
+      });
+      div.appendChild(ul);
+      const next = document.createElement("div");
+      next.className = "next";
+      next.innerHTML = "<strong>Next:</strong> " + (er.nextStep || "—");
+      div.appendChild(next);
+      return div;
+    }
+
+    function checkLines(check) {
+      if (!check?.checks?.length) return null;
+      const sec = document.createElement("section");
+      sec.innerHTML = "<h2>Scenario check</h2>";
+      const ul = document.createElement("ul");
+      ul.className = "plain";
+      check.checks.forEach((c) => {
+        const li = document.createElement("li");
+        const icon = c.pass === true ? "✓" : c.pass === false ? "✗" : "○";
+        li.className = c.pass === true ? "check-line pass" : c.pass === false ? "check-line fail" : "";
+        li.textContent = icon + " " + c.id + ": " + c.detail;
+        ul.appendChild(li);
+      });
+      sec.appendChild(ul);
+      return sec;
+    }
+
+    function render(payload) {
+      const er = payload.engineReport || payload;
+      const intent = er.intent || payload.report || {};
+      document.getElementById("meta").textContent =
+        (er.scenarioId || "?") +
+        (er.acceptanceIds?.length ? " · " + er.acceptanceIds.join(", ") : "");
+
+      const heroRoot = document.getElementById("hero");
+      heroRoot.innerHTML = "";
+      heroRoot.appendChild(heroSection(er));
+
+      const root = document.getElementById("content");
+      root.innerHTML = "";
+
+      const ch = checkLines(er.check || payload.check);
+      if (ch) root.appendChild(ch);
+
+      if (intent.summary) {
+        const sec = document.createElement("section");
+        sec.innerHTML = "<h2>Walk behaviour</h2>";
+        const p = document.createElement("p");
+        p.innerHTML = "<strong>" + (intent.summary.verdictPlain || "") + "</strong>";
+        sec.appendChild(p);
+        const ul = document.createElement("ul");
+        ul.className = "plain";
+        (intent.summary.plain || []).forEach((t) => {
+          const li = document.createElement("li");
+          li.textContent = t;
+          ul.appendChild(li);
+        });
+        sec.appendChild(ul);
+        root.appendChild(sec);
+      }
+
+      const fold = document.createElement("details");
+      fold.className = "fold";
+      fold.innerHTML = "<summary>Full technical report</summary>";
+      const pre = document.createElement("pre");
+      pre.style.fontSize = "0.72rem";
+      pre.style.whiteSpace = "pre-wrap";
+      pre.style.margin = "0.75rem 0 0";
+      pre.textContent = payload.text || er.text || "";
+      fold.appendChild(pre);
+      root.appendChild(fold);
+
+      document.getElementById("btn-copy").onclick = () => {
+        navigator.clipboard.writeText(payload.text || er.text || "").catch(() => {});
+      };
+    }
+
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        document.getElementById("meta").textContent = "";
+        document.getElementById("empty").hidden = false;
+      } else {
+        render(JSON.parse(raw));
+      }
+    } catch (e) {
+      document.getElementById("meta").textContent = "Could not read report: " + e.message;
+    }
+  </script>
+</body>
+</html>

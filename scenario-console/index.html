@@ -33,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260614175051" />
+  <meta name="walk-build" content="20260614175257" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" />
@@ -1163,24 +1163,25 @@
         <div class="workflow-note mb-3">
           <strong>After your walk:</strong><br />
           1. <strong>Phone:</strong> Deal alert test log → <strong>Upload log</strong><br />
-          2. <strong>Here:</strong> pick phone → <strong>Load cloud log</strong> → <strong>Check log</strong>
+          2. <strong>Here:</strong> pick phone → <strong>Engine report</strong>
         </div>
         <div class="log-check mt-0 mb-0" id="log-check" style="border: none; background: transparent; padding: 0;">
           <label for="log-phone" class="form-label">Phone</label>
           <div class="btn-row" style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
             <select id="log-phone"></select>
-            <button type="button" class="btn btn-secondary" id="btn-fetch-cloud-log" style="width: auto; padding: 0.45rem 0.75rem;">Load cloud log</button>
+            <button type="button" class="btn btn-primary" id="btn-engine-report" style="width: auto; padding: 0.45rem 0.9rem; white-space: nowrap;">Engine report</button>
           </div>
           <p class="hint" id="cloud-log-status"></p>
           <details class="log-advanced mt-2 mb-2">
-            <summary class="hint" style="cursor: pointer;">Advanced — paste JSON or choose file</summary>
+            <summary class="hint" style="cursor: pointer;">Advanced — load log, check log, paste JSON</summary>
+            <div class="btn-row mt-2" style="gap: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary" id="btn-fetch-cloud-log" style="width: auto; padding: 0.45rem 0.75rem;">Load cloud log</button>
+              <button type="button" class="btn btn-secondary" id="btn-check-log" style="width: auto; padding: 0.45rem 0.75rem;">Check log</button>
+              <button type="button" class="btn btn-secondary" id="btn-intent-report" style="width: auto; padding: 0.45rem 0.75rem;">Intent report only</button>
+            </div>
             <input type="file" id="log-file" class="file-input mt-2" accept=".json,application/json,text/plain" />
           </details>
-          <textarea id="log-json" placeholder='Load cloud log — or paste entries JSON here'></textarea>
-          <div class="btn-row mt-2">
-            <button type="button" class="btn btn-primary" id="btn-check-log">Check log</button>
-            <button type="button" class="btn btn-secondary" id="btn-intent-report">Intent report</button>
-          </div>
+          <textarea id="log-json" placeholder="Filled automatically" hidden></textarea>
           <div class="check-list mt-3" id="check-results" hidden></div>
         </div>
       </div>
@@ -3347,6 +3348,52 @@
       });
     }
 
+    function openEngineReportPage(data) {
+      localStorage.setItem("hoibo_engine_report", JSON.stringify(data));
+      const url = new URL("engine-report.html", window.location.href).href;
+      const tab = window.open(url, "_blank", "noopener");
+      if (!tab) window.location.href = url;
+    }
+
+    async function engineReportOneClick() {
+      const appId = el("log-phone")?.value;
+      const statusEl = el("cloud-log-status");
+      if (!appId) {
+        setStatus("Pick a phone first.", false);
+        return;
+      }
+      if (!currentRun?.run_id) {
+        setStatus("Run a scenario first — no active run.", false);
+        return;
+      }
+      setStatus("Loading log and building engine report…");
+      if (statusEl) statusEl.textContent = "Loading cloud log…";
+      try {
+        const loaded = await fetchCloudLogEntries(appId);
+        if (!loaded) {
+          setStatus("No cloud log — upload from phone first.", false);
+          return;
+        }
+        const raw = el("log-json").value.trim();
+        const data = await api("/api/scenarios/engine-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fieldLogRequestBody(raw)),
+        });
+        lastAnalysis = data.check || data.engineReport?.check || null;
+        playbookProgress = data.playbookSteps || playbookProgress;
+        paintPlaybookList();
+        openEngineReportPage(data);
+        const headline = data.headline || data.engineReport?.headline || "Report ready";
+        const ok = data.status === "working" || data.engineReport?.status === "working";
+        if (statusEl) statusEl.textContent = headline;
+        setStatus(headline, ok);
+      } catch (e) {
+        if (statusEl) statusEl.textContent = String(e.message || e);
+        setStatus(String(e.message || e), false);
+      }
+    }
+
     function openIntentReportPage(data) {
       // localStorage (not sessionStorage) — new tabs do not inherit sessionStorage
       localStorage.setItem("hoibo_intent_report", JSON.stringify(data));
@@ -3453,6 +3500,7 @@
       reader.readAsText(file);
     };
 
+    el("btn-engine-report").onclick = engineReportOneClick;
     el("btn-check-log").onclick = checkFieldLog;
     el("btn-intent-report").onclick = intentReport;
     el("btn-fetch-cloud-log").onclick = fetchCloudLog;
