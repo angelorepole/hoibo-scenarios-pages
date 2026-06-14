@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Intent report — Hoibò</title>
+  <link rel="stylesheet" href="/hoibo-scenarios-pages/static/css/console.css" />
+  <style>
+    body { max-width: 52rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .top a { color: var(--accent); font-size: 0.85rem; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
+    .meta { color: var(--muted); font-size: 0.8rem; margin-bottom: 1rem; }
+    .verdict { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
+    .pill { font-size: 0.72rem; padding: 0.25rem 0.55rem; border-radius: 999px; border: 1px solid var(--border); }
+    .pill.pass { border-color: var(--success); color: var(--success); }
+    .pill.warn { border-color: #c9a227; color: #c9a227; }
+    .pill.fail { border-color: var(--danger); color: var(--danger); }
+    .pill.inc { color: var(--muted); }
+    section { margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    section h2 { font-size: 0.95rem; margin: 0 0 0.5rem; }
+    ul { margin: 0; padding-left: 1.1rem; font-size: 0.82rem; line-height: 1.5; }
+    li { margin: 0.2rem 0; }
+    .story { font-size: 0.82rem; margin: 0.5rem 0; padding: 0.5rem; background: var(--bg); border-radius: var(--radius); }
+    .story strong { display: block; margin-bottom: 0.2rem; }
+    .empty { color: var(--muted); font-size: 0.85rem; }
+    .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .actions button { font-size: 0.78rem; padding: 0.4rem 0.7rem; }
+    details { font-size: 0.78rem; color: var(--muted); margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h1>Intent report</h1>
+      <p class="meta" id="meta">Loading…</p>
+    </div>
+    <a href="index.html">← Back to walk</a>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn btn-secondary" id="btn-copy">Copy full text</button>
+  </div>
+  <div class="verdict" id="verdict"></div>
+  <div id="content"></div>
+  <details id="terms-wrap" hidden>
+    <summary>Glossary</summary>
+    <ul id="terms"></ul>
+  </details>
+  <p class="empty" id="empty" hidden>
+    No report loaded. On the walk page: <strong>Load cloud log</strong> → <strong>Intent report</strong>.
+  </p>
+  <script>
+    const STORAGE_KEY = "hoibo_intent_report";
+    // sessionStorage kept as fallback if opened in same tab
+
+    function pill(label, status) {
+      const s = document.createElement("span");
+      s.className = "pill " + (status || "inc");
+      s.textContent = label + ": " + (status === "pass" ? "OK" : status === "warn" ? "check" : status === "fail" ? "problem" : "n/a");
+      return s;
+    }
+
+    function section(title, items) {
+      if (!items || !items.length) return "";
+      const sec = document.createElement("section");
+      const h = document.createElement("h2");
+      h.textContent = title;
+      sec.appendChild(h);
+      const ul = document.createElement("ul");
+      items.forEach((t) => {
+        const li = document.createElement("li");
+        li.textContent = t;
+        ul.appendChild(li);
+      });
+      sec.appendChild(ul);
+      return sec;
+    }
+
+    function checkSection(checks) {
+      if (!checks?.length) return null;
+      const sec = document.createElement("section");
+      sec.innerHTML = "<h2>Checks</h2>";
+      const ul = document.createElement("ul");
+      checks.forEach((c) => {
+        const li = document.createElement("li");
+        const icon = c.status === "pass" ? "✓" : c.status === "fail" ? "✗" : c.status === "warn" ? "⚠" : "○";
+        li.textContent = icon + " " + c.label + " — " + c.plain;
+        ul.appendChild(li);
+      });
+      sec.appendChild(ul);
+      return sec;
+    }
+
+    function storiesSection(narratives) {
+      if (!narratives?.length) return null;
+      const sec = document.createElement("section");
+      sec.innerHTML = "<h2>Stories</h2>";
+      narratives.forEach((n) => {
+        const d = document.createElement("div");
+        d.className = "story";
+        d.innerHTML = "<strong>" + n.title + "</strong>" + n.plain + (n.detail ? "<br><em>" + n.detail + "</em>" : "");
+        sec.appendChild(d);
+      });
+      return sec;
+    }
+
+    function render(payload) {
+      const report = payload.report || payload;
+      const meta = report.meta || {};
+      const ctx = report.context || {};
+      const parts = [];
+      if (ctx.scenarioId) parts.push("scenario " + ctx.scenarioId);
+      if (ctx.runId) parts.push("run " + ctx.runId);
+      parts.push((meta.entryCount || payload.entryCount || "?") + " engine runs");
+      document.getElementById("meta").textContent = parts.join(" · ");
+
+      const v = report.verdict || payload.verdict || {};
+      const verdictEl = document.getElementById("verdict");
+      verdictEl.innerHTML = "";
+      [["Scoring", v.scoring], ["Memory", v.memory], ["Delivery", v.delivery], ["Driving", v.driving]].forEach(([l, s]) => {
+        verdictEl.appendChild(pill(l, s));
+      });
+
+      const root = document.getElementById("content");
+      root.innerHTML = "";
+      const ov = section("Overview", report.overview?.plain);
+      if (ov) root.appendChild(ov);
+      const fn = section("Pipeline", report.funnel?.plain);
+      if (fn) root.appendChild(fn);
+      const ch = checkSection(report.checks);
+      if (ch) root.appendChild(ch);
+      const st = storiesSection(report.narratives);
+      if (st) root.appendChild(st);
+      const an = section("Watch out", report.anomalies);
+      if (an) root.appendChild(an);
+      const tl = section("Timeline", (report.timeline || []).map((e) => e.plain));
+      if (tl) root.appendChild(tl);
+      const hi = section("What to try next", report.hints);
+      if (hi) root.appendChild(hi);
+
+      const terms = report.terms || {};
+      const keys = Object.keys(terms);
+      if (keys.length) {
+        const wrap = document.getElementById("terms-wrap");
+        const ul = document.getElementById("terms");
+        ul.innerHTML = "";
+        keys.forEach((k) => {
+          const li = document.createElement("li");
+          li.innerHTML = "<strong>" + terms[k].label + "</strong> — " + terms[k].plain;
+          ul.appendChild(li);
+        });
+        wrap.hidden = false;
+      }
+
+      document.getElementById("btn-copy").onclick = () => {
+        const text = payload.text || report.text || "";
+        navigator.clipboard.writeText(text).catch(() => {});
+      };
+    }
+
+    try {
+      const raw =
+        localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        document.getElementById("meta").textContent = "";
+        document.getElementById("empty").hidden = false;
+      } else {
+        render(JSON.parse(raw));
+      }
+    } catch (e) {
+      document.getElementById("meta").textContent = "Could not read report: " + e.message;
+    }
+  </script>
+</body>
+</html>

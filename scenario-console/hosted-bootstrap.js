@@ -8,17 +8,63 @@
   const CRYPTO_KEY = "scenarios_crypto_admin_key";
   /** Per-env Supabase x-admin-api-key (STAGE and PROD differ). */
   const API_KEY_PREFIX = "scenarios_api_key_";
+  /** User opted in to persist keys on this browser (localStorage). */
+  const REMEMBER_PREF = "scenarios_remember_on_device";
+
+  function rememberKeysEnabled() {
+    return localStorage.getItem(REMEMBER_PREF) === "1";
+  }
+
+  function getStoredKey(name) {
+    const session = (sessionStorage.getItem(name) || "").trim();
+    if (session) return session;
+    if (rememberKeysEnabled()) return (localStorage.getItem(name) || "").trim();
+    return "";
+  }
+
+  function clearRememberedKeysOnly() {
+    localStorage.removeItem(REMEMBER_PREF);
+    localStorage.removeItem(CRYPTO_KEY);
+    localStorage.removeItem(LEGACY_KEY);
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(API_KEY_PREFIX)) localStorage.removeItem(k);
+    }
+  }
+
+  function persistKey(name, value) {
+    sessionStorage.setItem(name, value);
+    const remember =
+      typeof window.__adminKeyRememberOnDevice === "function" &&
+      window.__adminKeyRememberOnDevice();
+    if (remember) {
+      localStorage.setItem(name, value);
+      localStorage.setItem(REMEMBER_PREF, "1");
+      return;
+    }
+    clearRememberedKeysOnly();
+  }
+
+  function removeStoredKey(name) {
+    sessionStorage.removeItem(name);
+    localStorage.removeItem(name);
+  }
 
   function migrateLegacyAdminKey() {
-    const legacy = sessionStorage.getItem(LEGACY_KEY);
+    const legacy =
+      sessionStorage.getItem(LEGACY_KEY) || localStorage.getItem(LEGACY_KEY);
     if (!legacy) return;
-    if (!sessionStorage.getItem(CRYPTO_KEY)) {
+    if (!getStoredKey(CRYPTO_KEY)) {
       sessionStorage.setItem(CRYPTO_KEY, legacy);
+      if (rememberKeysEnabled()) localStorage.setItem(CRYPTO_KEY, legacy);
     }
-    if (!sessionStorage.getItem(API_KEY_PREFIX + "stage")) {
+    if (!getStoredKey(API_KEY_PREFIX + "stage")) {
       sessionStorage.setItem(API_KEY_PREFIX + "stage", legacy);
+      if (rememberKeysEnabled()) {
+        localStorage.setItem(API_KEY_PREFIX + "stage", legacy);
+      }
     }
-    sessionStorage.removeItem(LEGACY_KEY);
+    removeStoredKey(LEGACY_KEY);
   }
 
   async function promptAdminKey(message) {
@@ -34,11 +80,14 @@
   }
 
   function clearAllScenarioKeys() {
-    sessionStorage.removeItem(CRYPTO_KEY);
-    sessionStorage.removeItem(LEGACY_KEY);
-    for (let i = sessionStorage.length - 1; i >= 0; i--) {
-      const k = sessionStorage.key(i);
-      if (k && k.startsWith(API_KEY_PREFIX)) sessionStorage.removeItem(k);
+    removeStoredKey(CRYPTO_KEY);
+    removeStoredKey(LEGACY_KEY);
+    localStorage.removeItem(REMEMBER_PREF);
+    for (const store of [sessionStorage, localStorage]) {
+      for (let i = store.length - 1; i >= 0; i--) {
+        const k = store.key(i);
+        if (k && k.startsWith(API_KEY_PREFIX)) store.removeItem(k);
+      }
     }
     clearCryptoCaches();
   }
@@ -51,7 +100,7 @@
   /** Key for decrypting *.enc.json (build-time; usually .env.stage). */
   async function cryptoAdminKey() {
     migrateLegacyAdminKey();
-    const stored = (sessionStorage.getItem(CRYPTO_KEY) || "").trim();
+    const stored = getStoredKey(CRYPTO_KEY);
     if (stored) return stored;
 
     if (!cryptoKeyInflight) {
@@ -60,7 +109,7 @@
           "Admin API key for encrypted scenario files (Pages build key — usually from .env.stage):",
         );
         const trimmed = (k || "").trim();
-        if (trimmed) sessionStorage.setItem(CRYPTO_KEY, trimmed);
+        if (trimmed) persistKey(CRYPTO_KEY, trimmed);
         if (!trimmed) {
           throw new Error(
             "Admin API key required — enter ADMIN_API_KEY from Hoibo .env.stage to unlock scenario files.",
@@ -80,7 +129,7 @@
     migrateLegacyAdminKey();
     const slug = String(env || consoleEnv || "stage").toLowerCase();
     const storageKey = API_KEY_PREFIX + slug;
-    const stored = (sessionStorage.getItem(storageKey) || "").trim();
+    const stored = getStoredKey(storageKey);
     if (stored) return stored;
 
     if (!supabaseKeyInflight[slug]) {
@@ -89,7 +138,7 @@
           `Supabase admin key for ${slug.toUpperCase()} (from Hoibo .env.${slug} — not the same as STAGE if PROD):`,
         );
         const trimmed = (k || "").trim();
-        if (trimmed) sessionStorage.setItem(storageKey, trimmed);
+        if (trimmed) persistKey(storageKey, trimmed);
         if (!trimmed) {
           throw new Error(
             `Supabase admin key required for ${slug.toUpperCase()} — enter ADMIN_API_KEY from Hoibo .env.${slug}.`,
@@ -105,7 +154,7 @@
   }
 
   function clearSupabaseAdminKey(env) {
-    sessionStorage.removeItem(API_KEY_PREFIX + String(env || consoleEnv).toLowerCase());
+    removeStoredKey(API_KEY_PREFIX + String(env || consoleEnv).toLowerCase());
   }
 
   const ENV_KEY = "scenarios_console_env";
