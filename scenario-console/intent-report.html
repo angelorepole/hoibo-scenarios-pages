@@ -239,7 +239,7 @@
       const an = section("Watch out", report.anomalies);
       if (an) root.appendChild(an);
       const tlSec = document.createElement("section");
-      tlSec.innerHTML = "<h2>Full check log</h2><p class=\"meta\">Every engine check in order (walk-test). Times are UK local.</p>";
+      tlSec.innerHTML = "<h2>Full check log</h2><p class=\"meta\">Every uploaded row in order — engine checks, engagement, and presence probes (walk-test). Times are UK local.</p>";
       const tlUl = document.createElement("ul");
       let lastDay = "";
       (report.timeline || []).forEach((e) => {
