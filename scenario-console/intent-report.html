@@ -162,7 +162,7 @@
       if (provEl) {
         const lines = [];
         if (meta.periodStart && meta.periodEnd) {
-          lines.push("Checks in file span the activity dates shown in Day at a glance.");
+          lines.push("Checks in file span the activity dates shown in Full check log.");
         }
         if (prov.uploadedAt) {
           const up = new Date(prov.uploadedAt);
@@ -239,7 +239,7 @@
       const an = section("Watch out", report.anomalies);
       if (an) root.appendChild(an);
       const tlSec = document.createElement("section");
-      tlSec.innerHTML = "<h2>Day at a glance</h2><p class=\"meta\">Times are local (UK).</p>";
+      tlSec.innerHTML = "<h2>Full check log</h2><p class=\"meta\">Every engine check in order (walk-test). Times are UK local.</p>";
       const tlUl = document.createElement("ul");
       let lastDay = "";
       (report.timeline || []).forEach((e) => {
@@ -255,7 +255,7 @@
         }
         const li = document.createElement("li");
         const time = (e.at || "").includes("T")
-          ? new Date(e.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
+          ? new Date(e.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/London" })
           : "";
         li.textContent = (time ? time + "  " : "") + e.plain;
         tlUl.appendChild(li);
