@@ -33,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260616074512" />
+  <meta name="walk-build" content="20260616082958" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" />
@@ -1423,6 +1423,8 @@
       run_id: null,
       uploaded_at: null,
       memory_trace: null,
+      selected_path: null,
+      pick_reason: null,
     };
     let isSeeding = false;
     let runProgressLabel = "";
@@ -2781,7 +2783,7 @@
     async function fetchCloudLogEntries(appId) {
       const statusEl = el("cloud-log-status");
       const data = await api(
-        `/api/scenarios/field-logs?app_id=${encodeURIComponent(appId)}&limit=10&include_entries=true`
+        `/api/scenarios/field-logs?app_id=${encodeURIComponent(appId)}&limit=20&include_entries=true`
       );
       const uploads = data.uploads || [];
       if (!uploads.length) {
@@ -2815,6 +2817,8 @@
         run_id: doc.run_id || null,
         uploaded_at: doc.uploaded_at || latest.uploaded_at || null,
         memory_trace: doc.memory_trace || full.memory_trace || null,
+        selected_path: latest.path || null,
+        pick_reason: picked.reason || null,
       };
       if (doc.scenario_id && !currentRun) {
         const catSel = el("category");
@@ -2830,8 +2834,9 @@
       if (statusEl) {
         const sync = doc.run_id ? ` · run ${String(doc.run_id).slice(0, 8)}` : "";
         const pickNote = picked.reason === "run_match" ? " · matched active run" : "";
+        const pathNote = latest.path ? ` · ${latest.path}` : "";
         statusEl.textContent =
-          `Loaded ${entries.length} entries${sync}${pickNote} · ${doc.uploaded_at || latest.path}`;
+          `Loaded ${entries.length} entries${sync}${pickNote}${pathNote} · ${doc.uploaded_at || latest.path}`;
       }
       refreshPlaybookStatus();
       return true;
