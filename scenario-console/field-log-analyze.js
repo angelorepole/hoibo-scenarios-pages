@@ -9,6 +9,7 @@
         return {
           entries: raw.entries.filter((e) => e && typeof e === "object"),
           memory_trace: raw.memory_trace,
+          tech_log: raw.tech_log,
           scenario_id: raw.scenario_id,
           run_id: raw.run_id,
         };
@@ -365,6 +366,7 @@ Be concise. Plain English.`;
     const fileUploadedAt = parsed.uploaded_at || meta.uploaded_at || null;
     const sourcePath = meta.selected_path || null;
     const uploadMemory = parsed.memory_trace || meta.memory_trace || null;
+    const uploadTechLog = parsed.tech_log || meta.tech_log || null;
     if (fileScenario) body.upload_scenario_id = fileScenario;
     if (fileRun) body.upload_run_id = fileRun;
     if (fileUploadedAt) body.log_uploaded_at = fileUploadedAt;
@@ -378,6 +380,7 @@ Be concise. Plain English.`;
       if (run.started_at) body.console_run_started_at = run.started_at;
     }
     if (uploadMemory) body.memory_trace = uploadMemory;
+    if (uploadTechLog) body.tech_log = uploadTechLog;
     if (ctx.appId) body.app_id = ctx.appId;
     return body;
   }

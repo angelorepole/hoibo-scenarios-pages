@@ -444,6 +444,7 @@
         payload.console_run_started_at = String(body.console_run_started_at);
       }
       if (body.memory_trace) payload.memory_trace = body.memory_trace;
+      if (body.tech_log) payload.tech_log = body.tech_log;
       return supabaseFn("report-field-log", payload);
     }
     if (path === "/api/scenarios/playbook-status" && method === "POST") {
