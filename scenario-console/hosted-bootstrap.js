@@ -221,7 +221,7 @@
     const cfg = await getEnvConfig();
     const block = cfg[consoleEnv] || {};
     const preLaunch = !!cfg.preLaunchScenarioTesting;
-    let message = "Hosted Scenarios — view active run, map, and log check. Run/Finish on Mac.";
+    let message = "Hosted Scenarios — run, map, and log check from this page.";
     if (consoleEnv === "prod" && preLaunch) {
       message = "PROD pre-launch — scenarios only. No DB reset from here.";
     }
@@ -292,20 +292,6 @@
     opts = opts || {};
     const method = (opts.method || "GET").toUpperCase();
     const body = opts.body ? JSON.parse(opts.body) : {};
-
-    const MAC_ONLY =
-      "Run, Finish, and Abandon are Mac Dev Console only (127.0.0.1:8765/scenario-console/). This site is view + log check.";
-    function rejectMacOnly() {
-      throw new Error(MAC_ONLY);
-    }
-    const macOnlyPaths =
-      (path === "/api/scenarios/run" && (method === "POST" || method === "PATCH")) ||
-      (path === "/api/scenarios/prepare-devices" && method === "POST") ||
-      (path === "/api/scenarios/abandon" && method === "POST") ||
-      (path === "/api/scenarios/refresh-seed" && method === "POST") ||
-      (path === "/api/scenarios/cleanup" && method === "POST") ||
-      (path === "/api/scenarios/redeem" && method === "POST");
-    if (macOnlyPaths) rejectMacOnly();
 
     if (path === "/api/environment") return envStatus();
     if (path === "/api/environment/target" && method === "POST") {
@@ -516,6 +502,92 @@
         prep: data.prep,
         seedOutput: data.seedOutput,
       };
+    }
+    if (path.startsWith("/api/scenarios/run/") && method === "PATCH") {
+      const runId = path.split("/").pop();
+      if (!runId) throw new Error("run_id required");
+      const data = await supabaseFn("scenario-runs", {
+        action: "save",
+        run: { ...(body.run || {}), ...body, run_id: runId, console_env: consoleEnv },
+      });
+      return { ok: true, ...data };
+    }
+    if (path === "/api/scenarios/prepare-devices" && method === "POST") {
+      // Hosted pages cannot do local installs. Keep API shape for UI flow.
+      return { ok: true, prepared: 0, skipped: "hosted" };
+    }
+    if (path === "/api/scenarios/cleanup" && method === "POST") {
+      const runId = String(body.run_id || "").trim();
+      if (!runId) throw new Error("run_id required");
+      if (body.delete_log_only) {
+        return supabaseFn("scenario-runs", {
+          action: "delete",
+          run_id: runId,
+          console_env: consoleEnv,
+        });
+      }
+      return supabaseFn("scenario-runs", {
+        action: "finish",
+        run_id: runId,
+        console_env: consoleEnv,
+        outcome: body.outcome,
+        notes: body.notes,
+      });
+    }
+    if (path === "/api/scenarios/abandon" && method === "POST") {
+      const runId = String(body.run_id || "").trim();
+      if (!runId) throw new Error("run_id required");
+      return supabaseFn("scenario-runs", {
+        action: "abandon",
+        run_id: runId,
+        console_env: consoleEnv,
+        notes: body.notes,
+        cleanup_db: Boolean(body.cleanup_db),
+      });
+    }
+    if (path === "/api/scenarios/redeem" && method === "POST") {
+      const runId = String(body.run_id || "").trim();
+      if (!runId) throw new Error("run_id required");
+      return supabaseFn("scenario-runs", {
+        action: "redeem",
+        run_id: runId,
+        console_env: consoleEnv,
+        app_id: body.app_id,
+        shop_index: body.shop_index,
+        offer_index: body.offer_index,
+      });
+    }
+    if (path === "/api/scenarios/refresh-seed" && method === "POST") {
+      const runId = String(body.run_id || "").trim();
+      if (!runId) throw new Error("run_id required");
+      const current = await supabaseFn("scenario-runs", {
+        action: "get",
+        run_id: runId,
+        console_env: consoleEnv,
+      });
+      const run = current.run;
+      if (!run) throw new Error("Run not found");
+      const now = new Date();
+      const seededAt = now.toISOString();
+      const startsAt = new Date(now.getTime() - 15 * 60_000).toISOString();
+      for (const shop of run.shops || []) {
+        for (const offer of shop.offers || []) {
+          const durationMin = Number(offer.duration_minutes) || 240;
+          offer.starts_at = startsAt;
+          offer.expires_at = new Date(now.getTime() + durationMin * 60_000).toISOString();
+        }
+      }
+      run.seeded_at = seededAt;
+      await supabaseFn("scenario-seed", {
+        action: "seed",
+        plan: {
+          run_id: run.run_id,
+          short_id: run.short_id,
+          shops: run.shops || [],
+        },
+      });
+      await supabaseFn("scenario-runs", { action: "save", run });
+      return { ok: true, run, seedOutput: "Offers refreshed — pull feed on phone." };
     }
 
     throw new Error("Unsupported hosted scenarios API: " + path);

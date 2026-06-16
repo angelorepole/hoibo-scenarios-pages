@@ -33,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260615174605" />
+  <meta name="walk-build" content="20260616074512" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" />
@@ -1952,7 +1952,7 @@
       } else {
         if (idleHint) idleHint.hidden = true;
         if (picker) picker.hidden = active;
-        if (setup) setup.hidden = active || hosted;
+        if (setup) setup.hidden = active;
         if (actions) actions.hidden = !active;
         if (banner) banner.hidden = !active;
         if (history) history.hidden = active;
@@ -1960,23 +1960,23 @@
       }
 
       const phoneRows = el("phone-rows");
-      if (phoneRows) phoneRows.hidden = active || hosted;
+      if (phoneRows) phoneRows.hidden = active;
       const phonesHint = el("phones-hint");
-      if (phonesHint) phonesHint.hidden = active || hosted;
+      if (phonesHint) phonesHint.hidden = active;
 
       const runBtn = el("btn-run");
       const cleanupBtn = el("btn-cleanup");
       const refreshSeedBtn = el("btn-refresh-seed");
       const abandonBtn = el("btn-abandon");
-      if (runBtn) runBtn.hidden = hosted;
-      if (cleanupBtn) cleanupBtn.hidden = hosted;
-      if (refreshSeedBtn) refreshSeedBtn.hidden = hosted || !active;
-      if (abandonBtn) abandonBtn.hidden = hosted || !active;
+      if (runBtn) runBtn.hidden = false;
+      if (cleanupBtn) cleanupBtn.hidden = false;
+      if (refreshSeedBtn) refreshSeedBtn.hidden = !active;
+      if (abandonBtn) abandonBtn.hidden = !active;
       syncRedeemUi(currentRun);
-      el("btn-gps")?.toggleAttribute("disabled", hosted || active);
+      el("btn-gps")?.toggleAttribute("disabled", active);
 
-      if (categorySel) categorySel.disabled = active || isSeeding || (hosted && !active);
-      if (presetSel) presetSel.disabled = active || isSeeding || (hosted && !active);
+      if (categorySel) categorySel.disabled = active || isSeeding;
+      if (presetSel) presetSel.disabled = active || isSeeding;
 
       if (active && banner) {
         const label =
@@ -2003,8 +2003,6 @@
           mapHint.textContent = redeemExpectedForRun
             ? "Active run — walk the pins · tap a shop to test redeem"
             : "Active run — follow the playbook · walk near the pins (no redeem)";
-        } else if (hosted) {
-          mapHint.textContent = "No active run — map fills when Mac starts a scenario.";
         } else {
           mapHint.textContent = "Pan anywhere · click map to set centre pin";
         }
@@ -2617,9 +2615,8 @@
       return typeof window.__hostedScenariosApi === "function";
     }
 
-    /** Run / Finish / Abandon / phone prep — Mac dev console only. Hosted site is view + log check. */
     function canControlRuns() {
-      return !isHostedConsole();
+      return true;
     }
 
     /** Drop or move the walk centre pin before a run starts. */
@@ -2634,15 +2631,7 @@
         banner.hidden = true;
         return;
       }
-      banner.hidden = false;
-      banner.className = "view-only-banner";
-      const buildMeta = document.querySelector('meta[name="walk-build"]');
-      const buildTag = buildMeta ? ` · build ${buildMeta.content}` : "";
-      banner.innerHTML =
-        "View only — follow the active run, map, and log check. " +
-        "<strong>Run</strong> and <strong>Finish</strong> need the Mac Dev Console " +
-        '(<a href="http://127.0.0.1:8765/scenario-console/" target="_blank" rel="noopener noreferrer">127.0.0.1:8765/scenario-console</a>).' +
-        buildTag;
+      banner.hidden = true;
     }
 
     function normalizePhone(p) {
@@ -3037,10 +3026,6 @@
     }
 
     async function runScenario() {
-      if (!canControlRuns()) {
-        setStatus("Run is Mac-only — open Dev Console → Walk scenarios.", false);
-        return;
-      }
       if (!hasCenter) {
         setStatus("Set centre pin first — tap map or GPS.", false);
         return;
@@ -3237,10 +3222,6 @@
     }
 
     function cleanupRun() {
-      if (!canControlRuns()) {
-        setStatus("Finish is Mac-only — open Dev Console → Walk scenarios.", false);
-        return;
-      }
       if (!currentRun) {
         setStatus("Nothing to remove.", false);
         return;
@@ -3279,10 +3260,6 @@
     }
 
     async function refreshRunSeed() {
-      if (!canControlRuns()) {
-        setStatus("Refresh offers is Mac-only — open Dev Console → Walk scenarios.", false);
-        return;
-      }
       if (!currentRun) return;
       if (!confirm(`Refresh offer expiry for run ${currentRun.short_id}?\n\nSame shops and deals — new expiry times. Then pull feed on the phone.`)) return;
       const btn = el("btn-refresh-seed");
@@ -3306,10 +3283,6 @@
     }
 
     async function abandonRun() {
-      if (!canControlRuns()) {
-        setStatus("Abandon is Mac-only — open Dev Console → Walk scenarios.", false);
-        return;
-      }
       if (!currentRun) return;
       const notes = prompt("Why abandon? (optional)") || undefined;
       const wipe = confirm("Also remove seeded shops from DB?\n\nOK = wipe DB · Cancel = keep seed for retry");
