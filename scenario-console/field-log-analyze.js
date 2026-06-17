@@ -174,7 +174,8 @@ Be concise. Plain English.`;
         scenario_id: data.scenario_id || null,
         run_id: data.run_id || null,
         uploaded_at: data.uploaded_at || null,
-        memory_trace: data.memory_trace || null,
+        memory_trace: data.memory_trace || data.memoryTrace || null,
+        tech_log: data.tech_log || data.techLog || null,
       };
     } catch (_) {
       return {};
