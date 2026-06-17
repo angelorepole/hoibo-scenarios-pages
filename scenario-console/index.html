@@ -33,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260616092105" />
+  <meta name="walk-build" content="20260617081116" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" />
@@ -1078,14 +1078,13 @@
         <button type="button" data-target="prod">Prod</button>
       </div>
       <div class="header-actions">
-        <button type="button" class="btn btn-secondary font-sm" id="btn-open-log-modal" style="width: auto; padding: 0.35rem 0.75rem;">Add Phone Log</button>
       </div>
     </header>
     <aside class="sidebar">
       <div class="hosted-idle-hint" id="hosted-idle-hint" hidden>
         <h3>No active run</h3>
         <p class="hint mb-1">Start a scenario on the Mac Dev Console first, then refresh this page to see the map and playbook.</p>
-        <p class="hint mb-0">After a walk, use <strong>Add Phone Log</strong> (top right) to check your field log.</p>
+        <p class="hint mb-0">Logs now open from each device <strong>LOG</strong> button in Dev Console.</p>
       </div>
       <div id="scenario-picker-block">
         <label for="category" class="form-label">Category</label>
@@ -1178,42 +1177,6 @@
     <div class="map-wrap">
       <div id="map"></div>
       <div class="map-hint" id="map-hint">Pan anywhere · click map to set centre pin</div>
-    </div>
-  </div>
-
-  <!-- Log Checker Modal -->
-  <div class="modal-overlay" id="log-modal" hidden>
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2>Field log</h2>
-        <button type="button" class="modal-close" id="btn-close-log-modal">&times;</button>
-      </header>
-      <div class="modal-body">
-        <div class="workflow-note mb-3">
-          <strong>After your walk:</strong><br />
-          1. <strong>Phone:</strong> Deal alert test log → <strong>Upload log</strong><br />
-          2. <strong>Here:</strong> pick phone → <strong>Engine report</strong>
-        </div>
-        <div class="log-check mt-0 mb-0" id="log-check" style="border: none; background: transparent; padding: 0;">
-          <label for="log-phone" class="form-label">Phone</label>
-          <div class="btn-row" style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
-            <select id="log-phone"></select>
-            <button type="button" class="btn btn-primary" id="btn-engine-report" style="width: auto; padding: 0.45rem 0.9rem; white-space: nowrap;">Engine report</button>
-          </div>
-          <p class="hint" id="cloud-log-status"></p>
-          <details class="log-advanced mt-2 mb-2">
-            <summary class="hint" style="cursor: pointer;">Advanced — load log, check log, paste JSON</summary>
-            <div class="btn-row mt-2" style="gap: 0.5rem; flex-wrap: wrap;">
-              <button type="button" class="btn btn-secondary" id="btn-fetch-cloud-log" style="width: auto; padding: 0.45rem 0.75rem;">Load cloud log</button>
-              <button type="button" class="btn btn-secondary" id="btn-check-log" style="width: auto; padding: 0.45rem 0.75rem;">Check log</button>
-              <button type="button" class="btn btn-secondary" id="btn-intent-report" style="width: auto; padding: 0.45rem 0.75rem;">Intent report only</button>
-            </div>
-            <input type="file" id="log-file" class="file-input mt-2" accept=".json,application/json,text/plain" />
-          </details>
-          <textarea id="log-json" placeholder="Filled automatically" hidden></textarea>
-          <div class="check-list mt-3" id="check-results" hidden></div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -1424,6 +1387,7 @@
       uploaded_at: null,
       memory_trace: null,
       tech_log: null,
+      tech_log_present: null,
       selected_path: null,
       pick_reason: null,
     };
@@ -2468,15 +2432,6 @@
           run_id: currentRun?.run_id,
           run_active: !!currentRun,
         };
-        const log = el("log-json").value.trim();
-        if (log) body.logJson = log;
-        if (
-          lastAnalysis &&
-          (typeof lastAnalysis.checkPassed === "boolean" ||
-            typeof lastAnalysis.ok === "boolean")
-        ) {
-          body.field_log_ok = logCheckPassed(lastAnalysis);
-        }
         const data = await api("/api/scenarios/playbook-status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2739,148 +2694,6 @@
       };
       setRedeemPhonePickerVisible(visible.length > 1);
       updatePhoneHint();
-
-      const logSel = el("log-phone");
-      if (!logSel) return;
-      logSel.innerHTML = "";
-      visible.forEach((p) => {
-        if (!p.app_id) return;
-        const o = document.createElement("option");
-        o.value = p.app_id;
-        o.textContent = p.name;
-        logSel.appendChild(o);
-      });
-      if (!logSel.options.length) {
-        const o = document.createElement("option");
-        o.value = "";
-        o.textContent = "(add customer_app_id in devices.json)";
-        logSel.appendChild(o);
-      }
-    }
-
-    function renderSyncSteps(data) {
-      const box = el("check-results");
-      if (!box) return;
-      const steps = data?.steps || [];
-      if (!steps.length) {
-        box.hidden = true;
-        return;
-      }
-      box.hidden = false;
-      let html = steps
-        .map((s) => {
-          const cls = s.ok ? "check-pass" : "check-fail";
-          const icon = s.ok ? "✓" : "✗";
-          const fix = s.fix ? ` — ${s.fix}` : "";
-          return `<div class="check-row ${cls}">${icon} ${s.label}: ${s.detail}${fix}</div>`;
-        })
-        .join("");
-      if (data.syncOk) {
-        html += `<div class="check-row check-pass">Run sync OK — tap Check log.</div>`;
-      }
-      box.innerHTML = html;
-    }
-
-    async function fetchCloudLogEntries(appId) {
-      const statusEl = el("cloud-log-status");
-      const data = await api(
-        `/api/scenarios/field-logs?app_id=${encodeURIComponent(appId)}&limit=20&include_entries=true`
-      );
-      const uploads = data.uploads || [];
-      if (!uploads.length) {
-        if (statusEl) {
-          statusEl.textContent =
-            `No uploads for ${appId}. App id on phone must match shared/devices.json.`;
-        }
-        return false;
-      }
-      uploads.sort((a, b) => {
-        const at = Date.parse(a.uploaded_at || "") || 0;
-        const bt = Date.parse(b.uploaded_at || "") || 0;
-        return bt - at;
-      });
-      const picked = ScenarioFieldLog.pickCloudUpload(uploads, currentRun);
-      const latest = picked.upload;
-      if (!latest) {
-        if (statusEl) statusEl.textContent = `No uploads for ${appId}.`;
-        return false;
-      }
-      const full = await api("/api/scenarios/field-logs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: latest.path }),
-      });
-      const entries = full.entries || full.document?.entries || [];
-      el("log-json").value = JSON.stringify(entries, null, 2);
-      const doc = full.document || {};
-      lastCloudLogMeta = {
-        scenario_id: doc.scenario_id || null,
-        run_id: doc.run_id || null,
-        uploaded_at: doc.uploaded_at || latest.uploaded_at || null,
-        memory_trace: doc.memory_trace || full.memory_trace || null,
-        tech_log: doc.tech_log || full.tech_log || null,
-        selected_path: latest.path || null,
-        pick_reason: picked.reason || null,
-      };
-      if (doc.scenario_id && !currentRun) {
-        const catSel = el("category");
-        const presetSel = el("preset");
-        const match = scenarioList.find((s) => s.id === doc.scenario_id);
-        if (match && catSel) {
-          catSel.value = match.category || "intent";
-          catSel.dispatchEvent(new Event("change"));
-          presetSel.value = doc.scenario_id;
-          presetSel.dispatchEvent(new Event("change"));
-        }
-      }
-      if (statusEl) {
-        const sync = doc.run_id ? ` · run ${String(doc.run_id).slice(0, 8)}` : "";
-        const pickNote = picked.reason === "run_match" ? " · matched active run" : "";
-        const pathNote = latest.path ? ` · ${latest.path}` : "";
-        statusEl.textContent =
-          `Loaded ${entries.length} entries${sync}${pickNote}${pathNote} · ${doc.uploaded_at || latest.path}`;
-      }
-      refreshPlaybookStatus();
-      return true;
-    }
-
-    async function fetchCloudLog() {
-      const appId = el("log-phone")?.value;
-      const statusEl = el("cloud-log-status");
-      if (!appId) {
-        if (statusEl) statusEl.textContent = "Set customer_app_id in shared/devices.json for this phone.";
-        return;
-      }
-      if (statusEl) statusEl.textContent = "Checking run sync…";
-      try {
-        if (currentRun?.run_id) {
-          const syncData = await api("/api/scenarios/validate-run-sync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ app_id: appId, run_id: currentRun.run_id }),
-          });
-          renderSyncSteps(syncData);
-          const passed = Boolean(syncData.syncOk);
-          const msg = syncData.recommendation || syncData.summary || "Run sync check complete.";
-          if (!passed) {
-            if (statusEl) statusEl.textContent = syncData.summary || msg;
-            setStatus(msg, false);
-            return;
-          }
-          if (statusEl) statusEl.textContent = "Loading cloud log…";
-          localStorage.setItem(
-            `hoibo_verified_app_id_${appId}`,
-            JSON.stringify({ at: new Date().toISOString(), runId: currentRun.run_id }),
-          );
-        }
-        const loaded = await fetchCloudLogEntries(appId);
-        if (loaded) {
-          setStatus("Cloud log loaded — tap Check log.", true);
-        }
-      } catch (e) {
-        if (statusEl) statusEl.textContent = String(e.message || e);
-        setStatus(String(e.message || e), false);
-      }
     }
 
     async function redeemShop(shopIndex, offerIndex, btn) {
@@ -3316,10 +3129,6 @@
       }
     }
 
-    el("log-json").addEventListener("input", () => {
-      refreshPlaybookStatus();
-    });
-
     el("btn-gps").onclick = () => {
       if (!navigator.geolocation) { setStatus("Geolocation not available.", false); return; }
       setStatus("Getting GPS…");
@@ -3333,222 +3142,6 @@
       );
     };
 
-    function logCheckPassed(data) {
-      if (!data) return false;
-      if (typeof data.checkPassed === "boolean") return data.checkPassed;
-      return !!data.ok;
-    }
-
-    function renderCheckResults(data) {
-      const box = el("check-results");
-      if (!data || !data.checks) {
-        box.hidden = true;
-        return;
-      }
-      box.hidden = false;
-      const passed = logCheckPassed(data);
-      const summaryClass = passed ? "check-pass" : "check-fail";
-      let html = `<div class="check-row ${summaryClass}"><strong>${data.summary || ""}</strong></div>`;
-      data.checks.forEach((c) => {
-        let cls = "check-manual";
-        let icon = "○";
-        if (c.pass === true) { cls = "check-pass"; icon = "✓"; }
-        if (c.pass === false) { cls = "check-fail"; icon = "✗"; }
-        const idx = c.matchedEntryIndexes?.length
-          ? ` (entries ${c.matchedEntryIndexes.join(", ")})`
-          : "";
-        html += `<div class="check-row ${cls}">${icon} ${c.id}: ${c.detail}${idx}</div>`;
-      });
-      box.innerHTML = html;
-      if (data.llmPrompt) {
-        const copyBtn = document.createElement("button");
-        copyBtn.type = "button";
-        copyBtn.className = "btn btn-secondary mt-2";
-        copyBtn.style.width = "auto";
-        copyBtn.style.padding = "0.35rem 0.65rem";
-        copyBtn.textContent = "Copy review prompt for Cursor";
-        copyBtn.onclick = () => copyLlmPrompt();
-        box.appendChild(copyBtn);
-      }
-      box.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-
-    function runIdsMatch(expected, uploaded) {
-      const exp = String(expected || "").trim();
-      const up = String(uploaded || "").trim();
-      if (!exp || !up) return false;
-      if (exp === up) return true;
-      const expShort = exp.split("-")[0];
-      const upShort = up.split("-")[0];
-      return up === expShort || exp === upShort || expShort === upShort;
-    }
-
-    function fieldLogRequestBody(raw) {
-      return ScenarioFieldLog.buildFieldLogRequestBody(raw, {
-        activeScenarioId: activeScenarioId(),
-        lastCloudLogMeta,
-        currentRun,
-        appId: selectedPhone()?.app_id || null,
-      });
-    }
-
-    function openEngineReportPage(data) {
-      localStorage.setItem("hoibo_engine_report", JSON.stringify(data));
-      const url = new URL("engine-report.html", window.location.href).href;
-      const tab = window.open(url, "_blank", "noopener");
-      if (!tab) window.location.href = url;
-    }
-
-    async function engineReportOneClick() {
-      const appId = el("log-phone")?.value;
-      const statusEl = el("cloud-log-status");
-      if (!appId) {
-        setStatus("Pick a phone first.", false);
-        return;
-      }
-      if (!currentRun?.run_id) {
-        setStatus("Run a scenario first — no active run.", false);
-        return;
-      }
-      setStatus("Loading log and building engine report…");
-      if (statusEl) statusEl.textContent = "Loading cloud log…";
-      try {
-        const loaded = await fetchCloudLogEntries(appId);
-        if (!loaded) {
-          setStatus("No cloud log — upload from phone first.", false);
-          return;
-        }
-        const raw = el("log-json").value.trim();
-        const data = await api("/api/scenarios/engine-report", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(fieldLogRequestBody(raw)),
-        });
-        lastAnalysis = data.check || data.engineReport?.check || null;
-        playbookProgress = data.playbookSteps || playbookProgress;
-        paintPlaybookList();
-        openEngineReportPage(data);
-        const headline = data.headline || data.engineReport?.headline || "Report ready";
-        const ok = data.status === "working" || data.engineReport?.status === "working";
-        if (statusEl) statusEl.textContent = headline;
-        setStatus(headline, ok);
-      } catch (e) {
-        if (statusEl) statusEl.textContent = String(e.message || e);
-        setStatus(String(e.message || e), false);
-      }
-    }
-
-    function openIntentReportPage(data) {
-      // localStorage (not sessionStorage) — new tabs do not inherit sessionStorage
-      localStorage.setItem("hoibo_intent_report", JSON.stringify(data));
-      const url = new URL("intent-report.html", window.location.href).href;
-      const tab = window.open(url, "_blank", "noopener");
-      if (!tab) window.location.href = url;
-    }
-
-    async function checkFieldLog() {
-      const raw = el("log-json").value.trim();
-      if (!raw) {
-        setStatus("Load cloud log first (or paste JSON under Advanced).", false);
-        return;
-      }
-      if (currentRun?.run_id && (!lastCloudLogMeta.run_id || !lastCloudLogMeta.scenario_id)) {
-        setStatus(
-          "Log has no cloud stamp — Load cloud log first (or paste full upload JSON with run_id).",
-          false,
-        );
-        return;
-      }
-      setStatus("Checking log…");
-      try {
-        const data = await api("/api/scenarios/analyze-log", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(fieldLogRequestBody(raw)),
-        });
-        lastAnalysis = data;
-        playbookProgress = data.playbookSteps || playbookProgress;
-        paintPlaybookList();
-        renderCheckResults(data);
-        const passed = logCheckPassed(data);
-        setStatus(data.summary || "Check complete.", passed);
-      } catch (e) {
-        renderCheckResults(null);
-        setStatus(String(e.message || e), false);
-      }
-    }
-
-    async function intentReport() {
-      const raw = el("log-json").value.trim();
-      if (!raw) {
-        setStatus("Load cloud log or paste JSON first.", false);
-        return;
-      }
-      setStatus("Building intent report…");
-      try {
-        const data = await api("/api/scenarios/report-log", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(fieldLogRequestBody(raw)),
-        });
-        openIntentReportPage(data);
-        const v = data.verdict || data.report?.verdict;
-        setStatus(
-          `Intent report opened in new tab · ${data.entryCount ?? data.report?.meta?.entryCount ?? "?"} runs.`,
-          v?.delivery === "pass",
-        );
-      } catch (e) {
-        setStatus(String(e.message || e), false);
-      }
-    }
-
-    async function copyLlmPrompt() {
-      let prompt = lastAnalysis?.llmPrompt;
-      if (!prompt) {
-        const raw = el("log-json").value.trim();
-        if (!raw) {
-          setStatus("Paste log JSON first, or run Check log.", false);
-          return;
-        }
-        try {
-          const data = await api("/api/scenarios/analyze-log", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(fieldLogRequestBody(raw)),
-          });
-          lastAnalysis = data;
-          prompt = data.llmPrompt;
-        } catch (e) {
-          setStatus(String(e.message || e), false);
-          return;
-        }
-      }
-      try {
-        await navigator.clipboard.writeText(prompt);
-        setStatus("LLM review prompt copied — paste into Cursor or ChatGPT.", true);
-      } catch (_) {
-        setStatus("Could not copy — select text from server response.", false);
-      }
-    }
-
-    el("log-file").onchange = (ev) => {
-      const file = ev.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        el("log-json").value = String(reader.result || "");
-        setStatus(`Loaded ${file.name}. Tap Check log.`, true);
-        refreshPlaybookStatus();
-      };
-      reader.onerror = () => setStatus("Could not read file.", false);
-      reader.readAsText(file);
-    };
-
-    el("btn-engine-report").onclick = engineReportOneClick;
-    el("btn-check-log").onclick = checkFieldLog;
-    el("btn-intent-report").onclick = intentReport;
-    el("btn-fetch-cloud-log").onclick = fetchCloudLog;
-
     el("btn-run").onclick = runScenario;
     el("btn-refresh-phones")?.addEventListener("click", () => {
       refreshPhonePanel().catch((err) => setStatus(String(err.message || err), false));
@@ -3561,20 +3154,6 @@
     el("btn-refresh-seed").onclick = refreshRunSeed;
     el("btn-cleanup").onclick = cleanupRun;
     el("btn-abandon").onclick = abandonRun;
-
-    // Modal open/close handlers
-    const logModal = el("log-modal");
-    el("btn-open-log-modal").onclick = () => {
-      logModal.hidden = false;
-    };
-    el("btn-close-log-modal").onclick = () => {
-      logModal.hidden = true;
-    };
-    logModal.onclick = (e) => {
-      if (e.target === logModal) {
-        logModal.hidden = true;
-      }
-    };
 
     const confirmMapModal = el("confirm-map-modal");
     el("btn-close-confirm-map").onclick = closeConfirmMapModal;
