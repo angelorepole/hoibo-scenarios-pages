@@ -587,8 +587,34 @@
           shops: run.shops || [],
         },
       });
+      const fabricOpts = {
+        enabled: true,
+        merchant_fraction: 0.7,
+        date_spread_days: 90,
+        redemption_intensity: "medium",
+        attach_fixture_docs: true,
+        ...(run.accounting_fabric || {}),
+      };
+      const merchantIds = (run.shops || []).map((s) => s.merchant_id).filter(Boolean);
+      await supabaseFn("scenario-seed", {
+        action: "cleanup_accounting",
+        run_id: run.run_id,
+        merchant_ids: merchantIds,
+      });
+      const fabricResult = await supabaseFn("scenario-seed", {
+        action: "fabric",
+        run_id: run.run_id,
+        shops: run.shops || [],
+        accounting_fabric: fabricOpts,
+      });
+      run.accounting_fabric = fabricOpts;
+      run.accounting_fabric_result = fabricResult;
       await supabaseFn("scenario-runs", { action: "save", run });
-      return { ok: true, run, seedOutput: "Offers refreshed — pull feed on phone." };
+      const fabricPart =
+        fabricResult && fabricResult.purchases
+          ? ` Fabric: ${fabricResult.purchases} purchases refreshed.`
+          : "";
+      return { ok: true, run, seedOutput: `Offers refreshed — pull feed on phone.${fabricPart}` };
     }
 
     throw new Error("Unsupported hosted scenarios API: " + path);

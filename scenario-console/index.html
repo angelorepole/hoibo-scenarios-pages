@@ -33,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260618135828" />
+  <meta name="walk-build" content="20260618180229" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" />
@@ -1112,7 +1112,7 @@
       </div>
 
       <div id="scenario-setup-block">
-        <label class="form-label">Walk centre</label>
+        <label class="form-label">Scenario centre</label>
         <button type="button" class="btn btn-secondary" id="btn-gps">Use my location</button>
         <p class="hint">Pan anywhere, then <strong>click</strong> the map for the orange centre dot and dashed circle. Long-press works on phone/iPad. Shops seed inside the circle.
         </p>
@@ -1180,15 +1180,15 @@
     </div>
   </div>
 
-  <!-- Confirm walk centre before run -->
+  <!-- Confirm scenario centre before run -->
   <div class="modal-overlay" id="confirm-map-modal" hidden>
     <div class="modal-content" role="dialog" aria-labelledby="confirm-map-title" aria-modal="true">
       <header class="modal-header">
-        <h2 id="confirm-map-title">Confirm walk circle</h2>
+        <h2 id="confirm-map-title">Confirm scenario area</h2>
         <button type="button" class="modal-close" id="btn-close-confirm-map" aria-label="Close">&times;</button>
       </header>
       <div class="modal-body">
-        <p class="finish-run-hint">Shops seed <strong>inside the orange dashed circle</strong> on the map. Check it covers the area you will walk — wrong centre wastes the run.</p>
+        <p class="finish-run-hint">Shops seed <strong>inside the orange dashed circle</strong> on the map. Check it covers the area you will test — wrong centre wastes the run.</p>
         <dl class="confirm-map-facts">
           <div><dt>Scenario</dt><dd id="confirm-map-scenario">—</dd></div>
           <div><dt>Centre</dt><dd id="confirm-map-coords">—</dd></div>
@@ -1419,8 +1419,8 @@
       const mapHint = el("map-hint");
       if (mapHint && currentRun) {
         mapHint.textContent = redeemExpectedForRun
-          ? "Active run — walk the pins · tap a shop to test redeem"
-          : "Active run — follow the playbook · walk near the pins (no redeem)";
+          ? "Active run — visit the pins · tap a shop to test redeem"
+          : "Active run — follow the playbook · move near the pins (no redeem)";
       }
       if (redeemExpectedForRun && run) {
         applyRedeemPhoneFromRun(run);
@@ -1553,6 +1553,12 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    }
+
+    function playbookWhoLabel(who) {
+      const label = String(who || "").trim();
+      if (label === "Walk") return "Field";
+      return label || "Step";
     }
 
     function deviceReachabilityForSlot(slot) {
@@ -1968,8 +1974,8 @@
       if (mapHint) {
         if (active) {
           mapHint.textContent = redeemExpectedForRun
-            ? "Active run — walk the pins · tap a shop to test redeem"
-            : "Active run — follow the playbook · walk near the pins (no redeem)";
+            ? "Active run — visit the pins · tap a shop to test redeem"
+            : "Active run — follow the playbook · move near the pins (no redeem)";
         } else {
           mapHint.textContent = "Pan anywhere · click map to set centre pin";
         }
@@ -1991,7 +1997,7 @@
           hint.hidden = false;
           hint.textContent = currentRun
             ? "Follow the playbook and check logs. Finish the run on your Mac when done."
-            : "No active run — open Mac Dev Console → Walk scenarios to start one.";
+            : "No active run — open Mac Dev Console → Scenarios to start one.";
         }
         updateRunUiMode();
         return;
@@ -2062,7 +2068,7 @@
         `• Centre: ${centre}`,
         `• Radius: ${radiusM} m`,
       ];
-      if (run.summary) bullets.push(`• Walk: ${run.summary}`);
+      if (run.summary) bullets.push(`• Summary: ${run.summary}`);
       if (run.purpose && run.purpose !== run.summary) {
         bullets.push(`• Goal: ${run.purpose}`);
       }
@@ -2465,7 +2471,7 @@
           if (group.id === "setup" && canControlRuns() && !currentRun) {
             const intro = document.createElement("p");
             intro.className = "hint playbook-setup-intro";
-            intro.textContent = "On this Mac — use Walk centre and Phones below.";
+            intro.textContent = "On this Mac — use Scenario centre and Phones below.";
             block.appendChild(intro);
           }
         }
@@ -2483,8 +2489,8 @@
             ? ScenarioDisplay.formatPlaybookStepHtml(s.do)
             : escapeHtml(s.do || "");
           const doBlock = doHtml.includes("step-do-list")
-            ? `<span class="step-body"><span class="who">${escapeHtml(s.who || "Step")}</span>${doHtml}${detail}</span>`
-            : `<span class="step-body"><span class="who">${escapeHtml(s.who || "Step")}</span> — ${doHtml}${detail}</span>`;
+            ? `<span class="step-body"><span class="who">${escapeHtml(playbookWhoLabel(s.who))}</span>${doHtml}${detail}</span>`
+            : `<span class="step-body"><span class="who">${escapeHtml(playbookWhoLabel(s.who))}</span> — ${doHtml}${detail}</span>`;
           li.innerHTML = `${mark}${doBlock}`;
           if (status === "manual") {
             li.classList.add("playbook-tap-done");
@@ -2812,9 +2818,19 @@
     function prodRunConfirmed() {
       if (consoleEnvLabel !== "PROD") return true;
       const typed = prompt(
-        "PROD pre-launch test mode.\nType PROD to wipe WALK· merchants and seed this scenario:"
+        "PROD pre-launch test mode.\nType PROD to wipe scenario test merchants and seed this scenario:"
       );
       return typed === "PROD";
+    }
+
+    function defaultAccountingFabric() {
+      return {
+        enabled: true,
+        merchant_fraction: 0.7,
+        date_spread_days: 90,
+        redemption_intensity: "medium",
+        attach_fixture_docs: true,
+      };
     }
 
     let pendingRunBody = null;
@@ -2875,6 +2891,7 @@
         radius_m: radiusM,
         confirm_prod: consoleEnvLabel === "PROD",
         devices: deviceList,
+        accounting_fabric: defaultAccountingFabric(),
       };
       openConfirmMapModal(deviceList);
     }
@@ -2908,6 +2925,11 @@
         const seedPart = wiped
           ? `Seeded on ${consoleEnvLabel} (replaced ${wiped} prior run${wiped === 1 ? "" : "s"}).`
           : `Seeded on ${consoleEnvLabel}.`;
+        const fabricResult = data.run?.accounting_fabric_result;
+        const fabricPart =
+          fabricResult && fabricResult.purchases
+            ? ` Fabric: ${fabricResult.purchases} purchases, ${fabricResult.credits_sold} credits sold, ${fabricResult.credits_redeemed} redeemed.`
+            : "";
         const devicePart = prepOk && prepNames
           ? `Phones reset: ${prepNames}. `
           : prepOk
@@ -2916,7 +2938,7 @@
         const syncPart = runCode ? `Run sync id on phone: ${runCode}. ` : "";
         const appIdPart =
           "⚠️ After fresh install: copy App id from Deal alert test log on phone — must match shared/devices.json before Field log. ";
-        setStatus(`${devicePart}${syncPart}${appIdPart}${seedPart}`, true);
+        setStatus(`${devicePart}${syncPart}${appIdPart}${seedPart}${fabricPart}`, true);
       } catch (e) {
         clearRunProgress();
         setStatus(String(e.message || e), false);
@@ -3029,7 +3051,7 @@
       if (warn) {
         warn.innerHTML =
           `<strong>Run ${currentRun.short_id}</strong> on ${consoleEnvLabel}:<br>` +
-          `• <strong>Remove</strong> — deletes seeded WALK· shops/offers from ${consoleEnvLabel} DB; clears map &amp; active run.<br>` +
+          `• <strong>Remove</strong> — deletes seeded scenario shops/offers from ${consoleEnvLabel} DB; clears map &amp; active run.<br>` +
           `• <strong>Archive</strong> — keeps notes, devices &amp; Check log result in Run log.<br>` +
           `Does not reset phones — use a new Run for fresh installs.`;
       }
@@ -3081,7 +3103,7 @@
 
     async function refreshRunSeed() {
       if (!currentRun) return;
-      if (!confirm(`Refresh offer expiry for run ${currentRun.short_id}?\n\nSame shops and deals — new expiry times. Then pull feed on the phone.`)) return;
+      if (!confirm(`Refresh offers and credit economy for run ${currentRun.short_id}?\n\nSame shops — new expiry times and fresh synthetic purchases/redemptions. Then pull feed on the phone.`)) return;
       const btn = el("btn-refresh-seed");
       if (btn) btn.disabled = true;
       try {
