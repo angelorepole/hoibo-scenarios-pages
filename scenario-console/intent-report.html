@@ -267,6 +267,16 @@
       const placesSec = document.createElement("section");
       placesSec.innerHTML = "<h2>Places on this phone</h2>";
       const places = report.learnedPlaces || [];
+      const hasWork = places.some((p) => p.label === "Work");
+      const hasHome = places.some((p) => p.label === "Home");
+      const summary = document.createElement("p");
+      summary.className = "meta";
+      summary.textContent =
+        "Work identified: " +
+        (hasWork ? "Yes" : "No") +
+        " · Home identified: " +
+        (hasHome ? "Yes" : "No");
+      placesSec.appendChild(summary);
       if (places.length) {
         const ul = document.createElement("ul");
         places.forEach((p) => {
@@ -285,7 +295,7 @@
       } else {
         const p = document.createElement("p");
         p.className = "meta";
-        p.textContent = "None saved on device yet — engine needs repeated visits at the same area.";
+        p.textContent = "No Work or Home saved on this device yet.";
         placesSec.appendChild(p);
       }
       root.appendChild(placesSec);
