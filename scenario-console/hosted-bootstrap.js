@@ -613,9 +613,22 @@
       await supabaseFn("scenario-runs", { action: "save", run });
       const fabricPart =
         fabricResult && fabricResult.purchases
-          ? ` Fabric: ${fabricResult.purchases} purchases refreshed.`
+          ? ` Accounting fabric: ${fabricResult.purchases} purchases, ${fabricResult.credits_sold} credits sold, ${fabricResult.credits_redeemed} redeemed, £${Math.round((fabricResult.deferred_liability_pence || 0) / 100)} deferred liability.`
           : "";
-      return { ok: true, run, seedOutput: `Offers refreshed — pull feed on phone.${fabricPart}` };
+      const refreshWhen = now.toLocaleString("en-GB", {
+        timeZone: "Europe/London",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+      return {
+        ok: true,
+        run,
+        seedOutput: `Offers refreshed — pull feed on phone. Last offer refresh: ${refreshWhen}.${fabricPart}`,
+      };
     }
 
     throw new Error("Unsupported hosted scenarios API: " + path);

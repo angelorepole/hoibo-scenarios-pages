@@ -369,3 +369,95 @@ input:focus, select:focus, textarea:focus {
 .font-semibold { font-weight: 600 !important; }
 
 .no-underline { text-decoration: none !important; }
+
+/* Field log timeline — category colours (dev console + intent report) */
+.report-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.report-timeline-day {
+  margin-top: 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.report-timeline-day:first-child {
+  margin-top: 0;
+}
+
+.report-timeline-event {
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #ececf4;
+  line-height: 1.4;
+  border: 2px solid #4a4a5c;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* lifecycle — App opened, permissions */
+.report-timeline-event.report-timeline-lifecycle {
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.16);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35);
+}
+
+/* wake — Offers refreshed, motion/visit triggers */
+.report-timeline-event.report-timeline-wake {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.14);
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.32);
+}
+
+/* eval — location, score, delivery verdict */
+.report-timeline-event.report-timeline-eval {
+  border-color: #f87171;
+  background: rgba(248, 113, 113, 0.14);
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.35);
+}
+
+/* feed_fetch — network / cache rows */
+.report-timeline-event.report-timeline-feed_fetch {
+  border-color: #facc15;
+  background: rgba(250, 204, 21, 0.16);
+  color: #faf6e8;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.38);
+}
+
+/* presence_probe — Home/Work learning samples */
+.report-timeline-event.report-timeline-presence {
+  border-color: #7dd3fc;
+  background: rgba(125, 211, 252, 0.14);
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.32);
+}
+
+/* engagement — feed browse / tap cooldown */
+.report-timeline-event.report-timeline-engagement {
+  border-color: #fb923c;
+  background: rgba(251, 146, 60, 0.14);
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.32);
+}
+
+.report-timeline-time {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-timeline-lifecycle .report-timeline-time { color: #93c5fd; }
+.report-timeline-wake .report-timeline-time { color: #86efac; }
+.report-timeline-eval .report-timeline-time { color: #fca5a5; }
+.report-timeline-feed_fetch .report-timeline-time { color: #fde047; }
+.report-timeline-presence .report-timeline-time { color: #bae6fd; }
+.report-timeline-engagement .report-timeline-time { color: #fdba74; }
+
+.report-timeline-sub {
+  margin-top: 0.2rem;
+  padding-left: 0.15rem;
+  color: #d8d8e4;
+  opacity: 0.95;
+}

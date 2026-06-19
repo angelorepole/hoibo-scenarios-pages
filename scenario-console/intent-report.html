@@ -239,29 +239,55 @@
       const an = section("Watch out", report.anomalies);
       if (an) root.appendChild(an);
       const tlSec = document.createElement("section");
-      tlSec.innerHTML = "<h2>Full check log</h2><p class=\"meta\">Every uploaded row in order — engine checks, engagement, and presence probes (walk-test). Times are UK local.</p>";
-      const tlUl = document.createElement("ul");
+      tlSec.innerHTML =
+        "<h2>Full check log</h2>" +
+        "<p class=\"meta\">Every uploaded row in order — engine checks, engagement, and presence probes (walk-test). Times are UK local.</p>" +
+        "<p class=\"meta\" style=\"margin-top:0.35rem\">" +
+        "<span style=\"color:#60a5fa\">■</span> App &nbsp;" +
+        "<span style=\"color:#4ade80\">■</span> Wake &nbsp;" +
+        "<span style=\"color:#f87171\">■</span> Score &nbsp;" +
+        "<span style=\"color:#facc15\">■</span> Feed &nbsp;" +
+        "<span style=\"color:#7dd3fc\">■</span> Presence</p>";
+      const tlWrap = document.createElement("div");
+      tlWrap.className = "report-timeline";
       let lastDay = "";
       (report.timeline || []).forEach((e) => {
         const day = e.dayLabel || "";
         if (day && day !== lastDay) {
-          const dayLi = document.createElement("li");
-          dayLi.style.listStyle = "none";
-          dayLi.style.marginLeft = "-1.1rem";
-          dayLi.style.fontWeight = "600";
-          dayLi.textContent = day;
-          tlUl.appendChild(dayLi);
+          const dayEl = document.createElement("div");
+          dayEl.className = "report-timeline-day";
+          dayEl.textContent = day;
+          tlWrap.appendChild(dayEl);
           lastDay = day;
         }
-        const li = document.createElement("li");
-        const time = (e.at || "").includes("T")
-          ? new Date(e.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/London" })
+        const kind = e.kind || "eval";
+        const row = document.createElement("div");
+        row.className = "report-timeline-event report-timeline-" + kind;
+        const time =
+          e.timeLabel ||
+          ((e.at || "").includes("T")
+            ? new Date(e.at).toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+                timeZone: "Europe/London",
+              })
+            : "");
+        const repeat = (e.repeatCount ?? 1) > 1 ? " (x" + e.repeatCount + ")" : "";
+        const plainLines = String(e.plain || "").split("\n");
+        const timeHtml = time
+          ? '<span class="report-timeline-time">' + time + repeat + ":</span> "
           : "";
-        li.textContent = (time ? time + "  " : "") + e.plain;
-        tlUl.appendChild(li);
+        const first = plainLines[0] || "";
+        const rest = plainLines
+          .slice(1)
+          .map((line) => '<div class="report-timeline-sub">' + line + "</div>")
+          .join("");
+        row.innerHTML = timeHtml + first + rest;
+        tlWrap.appendChild(row);
       });
-      if (tlUl.children.length) {
-        tlSec.appendChild(tlUl);
+      if (tlWrap.children.length) {
+        tlSec.appendChild(tlWrap);
         root.appendChild(tlSec);
       }
       const placesSec = document.createElement("section");

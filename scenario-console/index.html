@@ -33,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260619092704" />
+  <meta name="walk-build" content="20260619094720" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" />
@@ -1451,6 +1451,39 @@
       }
     }
 
+    function formatRunWhen(iso) {
+      if (!iso) return "—";
+      try {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return String(iso).slice(0, 16);
+        return d.toLocaleString("en-GB", {
+          timeZone: "Europe/London",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      } catch (_) {
+        return iso.slice(0, 16);
+      }
+    }
+
+    function lastOfferRefreshIso(run) {
+      return run?.seeded_at || run?.started_at || null;
+    }
+
+    function appendLastOfferRefreshNote(message, run) {
+      const base = String(message || "").trim();
+      const refreshIso = lastOfferRefreshIso(run);
+      if (!refreshIso) return base;
+      const when = formatRunWhen(refreshIso);
+      if (!when || when === "—") return base;
+      if (base.toLowerCase().includes("last offer refresh")) return base;
+      return `${base} Last offer refresh: ${when}.`;
+    }
+
     function formatDuration(seconds) {
       if (seconds == null) return "";
       if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
@@ -1965,9 +1998,11 @@
         el("active-run-meta").innerHTML =
           `<span class="run-id">${currentRun.short_id || (currentRun.run_id || "").slice(0, 8)}</span>` +
           ` · ${consoleEnvLabel} · ${devices}<br />` +
+          `Started <strong>${formatRunWhen(currentRun.started_at)}</strong><br />` +
           `Phone field log should show run <strong>${currentRun.short_id || (currentRun.run_id || "").slice(0, 8)}</strong>` +
           `<br />After fresh install: verify <strong>App id</strong> on phone matches <code>shared/devices.json</code>` +
-          `<br />Centre ${centre} · ${currentRun.radius_m || radiusM} m`;
+          `<br />Centre ${centre} · ${currentRun.radius_m || radiusM} m` +
+          `<br />Last offer refresh: <strong>${formatRunWhen(lastOfferRefreshIso(currentRun))}</strong>`;
       }
 
       const mapHint = el("map-hint");
@@ -2064,7 +2099,9 @@
         ? `${run.center.lat.toFixed(5)}, ${run.center.lng.toFixed(5)}`
         : "—";
       const bullets = [
+        `• Started: ${formatRunWhen(run.started_at)}`,
         `• Seed: ${seed}`,
+        `• Last offer refresh: ${formatRunWhen(lastOfferRefreshIso(run))}`,
         `• Centre: ${centre}`,
         `• Radius: ${radiusM} m`,
       ];
@@ -2922,14 +2959,14 @@
           data.devicePrep?.run_short_id ||
           (data.run?.run_id || "").slice(0, 8);
         const wiped = data.prep?.wiped_runs?.length || 0;
-        const seedPart = wiped
-          ? `Seeded on ${consoleEnvLabel} (replaced ${wiped} prior run${wiped === 1 ? "" : "s"}).`
-          : `Seeded on ${consoleEnvLabel}.`;
-        const fabricResult = data.run?.accounting_fabric_result;
-        const fabricPart =
-          fabricResult && fabricResult.purchases
-            ? ` Fabric: ${fabricResult.purchases} purchases, ${fabricResult.credits_sold} credits sold, ${fabricResult.credits_redeemed} redeemed.`
-            : "";
+        const seedLine = data.seedOutput
+          ? data.seedOutput
+          : appendLastOfferRefreshNote(
+              wiped
+                ? `Seeded on ${consoleEnvLabel} (replaced ${wiped} prior run${wiped === 1 ? "" : "s"}).`
+                : `Seeded on ${consoleEnvLabel}.`,
+              data.run,
+            );
         const devicePart = prepOk && prepNames
           ? `Phones reset: ${prepNames}. `
           : prepOk
@@ -2938,7 +2975,7 @@
         const syncPart = runCode ? `Run sync id on phone: ${runCode}. ` : "";
         const appIdPart =
           "⚠️ After fresh install: copy App id from Deal alert test log on phone — must match shared/devices.json before Field log. ";
-        setStatus(`${devicePart}${syncPart}${appIdPart}${seedPart}${fabricPart}`, true);
+        setStatus(`${devicePart}${syncPart}${appIdPart}${seedLine}`, true);
       } catch (e) {
         clearRunProgress();
         setStatus(String(e.message || e), false);
@@ -3115,7 +3152,7 @@
         if (data.run) {
           showRun(data.run);
         }
-        setStatus(data.seedOutput || "Offers refreshed — pull feed on phone.", true);
+        setStatus(data.seedOutput || appendLastOfferRefreshNote("Offers refreshed — pull feed on phone.", data.run), true);
         refreshPlaybookStatus();
       } catch (e) {
         setStatus(String(e.message || e), false);
