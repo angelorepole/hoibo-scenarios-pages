@@ -606,6 +606,7 @@
         run_id: run.run_id,
         shops: run.shops || [],
         accounting_fabric: fabricOpts,
+        replace: true,
       });
       run.accounting_fabric = fabricOpts;
       run.accounting_fabric_result = fabricResult;
