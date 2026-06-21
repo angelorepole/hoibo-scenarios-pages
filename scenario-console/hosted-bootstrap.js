@@ -265,6 +265,59 @@
     return data;
   }
 
+  const FABRIC_MERCHANT_BATCH_SIZE = 8;
+
+  function mergeFabricResults(results) {
+    const merged = {
+      merchants_fabricated: 0,
+      purchases: 0,
+      credits_sold: 0,
+      credits_redeemed: 0,
+      deferred_liability_pence: 0,
+      documents_attached: 0,
+      skipped: 0,
+      errors: [],
+    };
+    for (const row of results) {
+      merged.merchants_fabricated += Number(row.merchants_fabricated || 0);
+      merged.purchases += Number(row.purchases || 0);
+      merged.credits_sold += Number(row.credits_sold || 0);
+      merged.credits_redeemed += Number(row.credits_redeemed || 0);
+      merged.documents_attached += Number(row.documents_attached || 0);
+      merged.skipped += Number(row.skipped || 0);
+      if (Array.isArray(row.errors)) merged.errors.push(...row.errors);
+    }
+    if (results.length) {
+      merged.deferred_liability_pence = Number(
+        results[results.length - 1].deferred_liability_pence || 0,
+      );
+    }
+    return merged;
+  }
+
+  async function fabricScenarioBatched(runId, shops, fabricOpts, { replace = false } = {}) {
+    let offset = 0;
+    const results = [];
+    while (true) {
+      const payload = {
+        action: "fabric",
+        run_id: runId,
+        shops,
+        accounting_fabric: fabricOpts,
+      };
+      if (replace && offset === 0) payload.replace = true;
+      payload.batch_offset = offset;
+      payload.batch_size = FABRIC_MERCHANT_BATCH_SIZE;
+      const result = await supabaseFn("scenario-seed", payload);
+      results.push(result);
+      const processed = Number(result.batch_merchants_processed || 0);
+      const planned = Number(result.batch_merchants_planned || 0);
+      if (processed === 0 || offset + processed >= planned) break;
+      offset += FABRIC_MERCHANT_BATCH_SIZE;
+    }
+    return mergeFabricResults(results);
+  }
+
   async function findScenario(scenarioId) {
     const catalog = await getCatalog();
     const scenarios = await mapScenarioList(catalog);
@@ -601,13 +654,12 @@
         run_id: run.run_id,
         merchant_ids: merchantIds,
       });
-      const fabricResult = await supabaseFn("scenario-seed", {
-        action: "fabric",
-        run_id: run.run_id,
-        shops: run.shops || [],
-        accounting_fabric: fabricOpts,
-        replace: true,
-      });
+      const fabricResult = await fabricScenarioBatched(
+        run.run_id,
+        run.shops || [],
+        fabricOpts,
+        { replace: true },
+      );
       run.accounting_fabric = fabricOpts;
       run.accounting_fabric_result = fabricResult;
       await supabaseFn("scenario-runs", { action: "save", run });
