@@ -1,5 +1,4 @@
 /** Extracted from index.html — edit here, not inline in HTML. */
-<script>
   const el = (id) => document.getElementById(id);
   const statusEl = el("status");
 
@@ -2008,4 +2007,3 @@
       failBoot(String(e.message || e));
     }
   })();
-</script>
