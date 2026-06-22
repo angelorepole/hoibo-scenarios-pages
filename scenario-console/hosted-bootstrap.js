@@ -4,8 +4,9 @@
   if (isLocal) return;
 
   const LEGACY_KEY = "scenarios_admin_api_key";
-  /** Decrypts catalog/devices/env blobs (Pages build uses .env.stage ADMIN_API_KEY). */
-  const CRYPTO_KEY = "scenarios_crypto_admin_key";
+  /** Scenario file decrypt key (SCENARIOS_ENCRYPT_KEY at Pages build — not Supabase ADMIN_API_KEY). */
+  const CRYPTO_KEY = "scenarios_unlock_key";
+  const LEGACY_CRYPTO_KEY = "scenarios_crypto_admin_key";
   /** Per-env Supabase x-admin-api-key (STAGE and PROD differ). */
   const API_KEY_PREFIX = "scenarios_api_key_";
   /** User opted in to persist keys on this browser (localStorage). */
@@ -53,25 +54,43 @@
   function migrateLegacyAdminKey() {
     const legacy =
       sessionStorage.getItem(LEGACY_KEY) || localStorage.getItem(LEGACY_KEY);
-    if (!legacy) return;
+    const legacyCrypto =
+      sessionStorage.getItem(LEGACY_CRYPTO_KEY) || localStorage.getItem(LEGACY_CRYPTO_KEY);
+    if (!legacy && !legacyCrypto) return;
     if (!getStoredKey(CRYPTO_KEY)) {
-      sessionStorage.setItem(CRYPTO_KEY, legacy);
-      if (rememberKeysEnabled()) localStorage.setItem(CRYPTO_KEY, legacy);
+      const src = legacyCrypto || legacy;
+      if (src) {
+        sessionStorage.setItem(CRYPTO_KEY, src);
+        if (rememberKeysEnabled()) localStorage.setItem(CRYPTO_KEY, src);
+      }
     }
-    if (!getStoredKey(API_KEY_PREFIX + "stage")) {
+    if (!getStoredKey(API_KEY_PREFIX + "stage") && legacy) {
       sessionStorage.setItem(API_KEY_PREFIX + "stage", legacy);
       if (rememberKeysEnabled()) {
         localStorage.setItem(API_KEY_PREFIX + "stage", legacy);
       }
     }
     removeStoredKey(LEGACY_KEY);
+    removeStoredKey(LEGACY_CRYPTO_KEY);
   }
 
-  async function promptAdminKey(message) {
+  function unlockTokenFromUrl() {
+    try {
+      return new URLSearchParams(window.location.search).get("unlock_token") || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  async function promptScenarioUnlockKey(message) {
     if (typeof window.__promptAdminKey === "function") {
       return window.__promptAdminKey(message);
     }
     return prompt(message);
+  }
+
+  async function promptSupabaseEnvKey(message) {
+    return promptScenarioUnlockKey(message);
   }
 
   function clearCryptoCaches() {
@@ -82,6 +101,7 @@
   function clearAllScenarioKeys() {
     removeStoredKey(CRYPTO_KEY);
     removeStoredKey(LEGACY_KEY);
+    removeStoredKey(LEGACY_CRYPTO_KEY);
     localStorage.removeItem(REMEMBER_PREF);
     for (const store of [sessionStorage, localStorage]) {
       for (let i = store.length - 1; i >= 0; i--) {
@@ -97,22 +117,37 @@
   let cryptoKeyInflight = null;
   const supabaseKeyInflight = {};
 
-  /** Key for decrypting *.enc.json (build-time; usually .env.stage). */
+  /** Key for decrypting *.enc.json (SCENARIOS_ENCRYPT_KEY at build). */
   async function cryptoAdminKey() {
     migrateLegacyAdminKey();
     const stored = getStoredKey(CRYPTO_KEY);
     if (stored) return stored;
 
+    const urlToken = unlockTokenFromUrl().trim();
+
     if (!cryptoKeyInflight) {
       cryptoKeyInflight = (async () => {
-        const k = await promptAdminKey(
-          "Admin API key for encrypted scenario files (Pages build key — usually from .env.stage):",
+        const k = await promptScenarioUnlockKey(
+          urlToken
+            ? "Scenario unlock key (validates your unlock link — from whoever minted the token, not Supabase ADMIN_API_KEY):"
+            : "Scenario unlock key for encrypted scenario files (SCENARIOS_ENCRYPT_KEY from Pages build — not Supabase ADMIN_API_KEY):",
         );
         const trimmed = (k || "").trim();
+        if (trimmed && urlToken && globalThis.ScenarioUnlockToken) {
+          const ok = await globalThis.ScenarioUnlockToken.verifyScenarioUnlockToken(
+            trimmed,
+            urlToken,
+          );
+          if (!ok) {
+            throw new Error(
+              "Unlock link expired or key mismatch — mint a new token from Hoibo Dev console (/api/scenario-unlock/mint).",
+            );
+          }
+        }
         if (trimmed) persistKey(CRYPTO_KEY, trimmed);
         if (!trimmed) {
           throw new Error(
-            "Admin API key required — enter ADMIN_API_KEY from Hoibo .env.stage to unlock scenario files.",
+            "Scenario unlock key required — use SCENARIOS_ENCRYPT_KEY (not Supabase ADMIN_API_KEY) to decrypt hosted scenario files.",
           );
         }
         return trimmed;
@@ -134,14 +169,14 @@
 
     if (!supabaseKeyInflight[slug]) {
       supabaseKeyInflight[slug] = (async () => {
-        const k = await promptAdminKey(
-          `Supabase admin key for ${slug.toUpperCase()} (from Hoibo .env.${slug} — not the same as STAGE if PROD):`,
+        const k = await promptSupabaseEnvKey(
+          `Supabase environment key for ${slug.toUpperCase()} (from Hoibo .env.${slug} — separate from scenario file unlock key):`,
         );
         const trimmed = (k || "").trim();
         if (trimmed) persistKey(storageKey, trimmed);
         if (!trimmed) {
           throw new Error(
-            `Supabase admin key required for ${slug.toUpperCase()} — enter ADMIN_API_KEY from Hoibo .env.${slug}.`,
+            `Supabase environment key required for ${slug.toUpperCase()} — from Hoibo .env.${slug}.`,
           );
         }
         return trimmed;
@@ -251,7 +286,7 @@
     if (res.status === 401) {
       clearSupabaseAdminKey(consoleEnv);
       throw new Error(
-        `Admin key rejected for ${consoleEnv.toUpperCase()} — use ADMIN_API_KEY from Hoibo .env.${consoleEnv} (not .env.stage). Refresh and try again.`,
+        `Environment key rejected for ${consoleEnv.toUpperCase()} — check Hoibo .env.${consoleEnv}. Refresh and try again.`,
       );
     }
     if (!res.ok || data.ok === false) {
