@@ -461,3 +461,53 @@ input:focus, select:focus, textarea:focus {
   color: #d8d8e4;
   opacity: 0.95;
 }
+
+/* General Button Loading Spinner UX Pattern */
+.btn.loading {
+  position: relative;
+  color: transparent !important; /* Hide button text */
+  pointer-events: none;
+}
+
+.btn.loading::after {
+  content: "";
+  position: absolute;
+  width: 1.25rem;
+  height: 1.25rem;
+  top: 50%;
+  left: 50%;
+  margin-top: -0.625rem;
+  margin-left: -0.625rem;
+  border: 2.5px solid rgba(255, 255, 255, 0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: btn-spin 0.6s linear infinite;
+}
+
+/* Lane target / secondary loading spinner overrides */
+.btn-secondary.loading::after {
+  border-color: rgba(244, 244, 246, 0.2);
+  border-top-color: var(--text);
+}
+
+.btn-primary.loading::after {
+  border-color: rgba(17, 17, 17, 0.2);
+  border-top-color: #111;
+}
+
+.btn-user.loading::after,
+.btn-merchant.loading::after {
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+}
+
+.btn-danger.loading::after {
+  border-color: rgba(255, 92, 106, 0.2);
+  border-top-color: var(--danger);
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

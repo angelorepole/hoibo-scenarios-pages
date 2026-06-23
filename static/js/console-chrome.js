@@ -78,6 +78,8 @@
       btn.onclick = async () => {
         const target = btn.dataset.target;
         if (!target || btn.classList.contains("active")) return;
+        btn.disabled = true;
+        btn.classList.add("loading");
         try {
           await postConsoleTarget(target);
           if (typeof onChanged === "function") {
@@ -86,6 +88,9 @@
         } catch (err) {
           console.error("[HoiboConsoleChrome] lane switch failed:", err);
           throw err;
+        } finally {
+          btn.disabled = false;
+          btn.classList.remove("loading");
         }
       };
     });

@@ -730,13 +730,18 @@
       return;
     }
     if (isSeeding) {
-      runBtn.disabled = true;
-      runBtn.textContent = `Resetting phones…`;
+      if (runBtn) {
+        runBtn.disabled = true;
+        runBtn.textContent = `Resetting phones…`;
+        runBtn.classList.add("loading");
+      }
       cleanupBtn.disabled = true;
       if (refreshSeedBtn) refreshSeedBtn.disabled = true;
       if (abandonBtn) abandonBtn.disabled = true;
       if (hint) hint.hidden = true;
       return;
+    } else {
+      if (runBtn) runBtn.classList.remove("loading");
     }
     clearRunProgress();
     runBtn.textContent = currentRun
@@ -1806,7 +1811,10 @@
     const notes = notesEl?.value?.trim() || undefined;
     const outcome = resolveFinishOutcomeFromLog();
     const confirmBtn = el("btn-finish-confirm");
-    if (confirmBtn) confirmBtn.disabled = true;
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.classList.add("loading");
+    }
     try {
       await api("/api/scenarios/cleanup", {
         method: "POST",
@@ -1826,7 +1834,10 @@
     } catch (e) {
       setStatus(String(e.message || e), false);
     } finally {
-      if (confirmBtn) confirmBtn.disabled = false;
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove("loading");
+      }
     }
   }
 
@@ -1834,7 +1845,10 @@
     if (!currentRun) return;
     if (!confirm(`Refresh offers and credit economy for run ${currentRun.short_id}?\n\nSame shops — new expiry times and fresh synthetic purchases/redemptions. Then pull feed on the phone.`)) return;
     const btn = el("btn-refresh-seed");
-    if (btn) btn.disabled = true;
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add("loading");
+    }
     try {
       const data = await api("/api/scenarios/refresh-seed", {
         method: "POST",
@@ -1849,7 +1863,10 @@
     } catch (e) {
       setStatus(String(e.message || e), false);
     } finally {
-      if (btn) btn.disabled = !currentRun;
+      if (btn) {
+        btn.disabled = !currentRun;
+        btn.classList.remove("loading");
+      }
     }
   }
 
@@ -1858,6 +1875,11 @@
     const notes = prompt("Why abandon? (optional)") || undefined;
     const wipe = confirm("Also remove seeded shops from DB?\n\nOK = wipe DB · Cancel = keep seed for retry");
     if (!confirm(`Abandon run ${currentRun.short_id}?`)) return;
+    const btn = el("btn-abandon");
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add("loading");
+    }
     try {
       await api("/api/scenarios/abandon", {
         method: "POST",
@@ -1877,6 +1899,11 @@
       await loadRunHistory();
     } catch (e) {
       setStatus(String(e.message || e), false);
+    } finally {
+      if (btn) {
+        btn.disabled = !currentRun;
+        btn.classList.remove("loading");
+      }
     }
   }
 
@@ -1894,8 +1921,22 @@
   };
 
   el("btn-run").onclick = runScenario;
-  el("btn-refresh-phones")?.addEventListener("click", () => {
-    refreshPhonePanel().catch((err) => setStatus(String(err.message || err), false));
+  el("btn-refresh-phones")?.addEventListener("click", async () => {
+    const btn = el("btn-refresh-phones");
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add("loading");
+    }
+    try {
+      await refreshPhonePanel();
+    } catch (err) {
+      setStatus(String(err.message || err), false);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove("loading");
+      }
+    }
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
