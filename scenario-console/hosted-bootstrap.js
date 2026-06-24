@@ -584,6 +584,7 @@
         devices: body.devices,
         confirm_prod: body.confirm_prod,
         default_radius_m: catalog.defaultRadiusM,
+        accounting_fabric: body.exclude_accounting ? { enabled: false } : undefined,
       });
       return {
         ok: true,
@@ -675,33 +676,42 @@
           shops: run.shops || [],
         },
       });
-      const fabricOpts = {
-        enabled: true,
-        merchant_fraction: 0.7,
-        date_spread_days: 90,
-        redemption_intensity: "medium",
-        attach_fixture_docs: true,
-        ...(run.accounting_fabric || {}),
-      };
-      const merchantIds = (run.shops || []).map((s) => s.merchant_id).filter(Boolean);
-      await supabaseFn("scenario-seed", {
-        action: "cleanup_accounting",
-        run_id: run.run_id,
-        merchant_ids: merchantIds,
-      });
-      const fabricResult = await fabricScenarioBatched(
-        run.run_id,
-        run.shops || [],
-        fabricOpts,
-        { replace: true },
-      );
-      run.accounting_fabric = fabricOpts;
-      run.accounting_fabric_result = fabricResult;
+      const isExcluded = run.exclude_accounting || run.accounting_fabric?.enabled === false;
+      let fabricPart = "";
+      if (!isExcluded) {
+        const fabricOpts = {
+          enabled: true,
+          merchant_fraction: 0.7,
+          date_spread_days: 90,
+          redemption_intensity: "medium",
+          attach_fixture_docs: true,
+          ...(run.accounting_fabric || {}),
+        };
+        const merchantIds = (run.shops || []).map((s) => s.merchant_id).filter(Boolean);
+        await supabaseFn("scenario-seed", {
+          action: "cleanup_accounting",
+          run_id: run.run_id,
+          merchant_ids: merchantIds,
+        });
+        const fabricResult = await fabricScenarioBatched(
+          run.run_id,
+          run.shops || [],
+          fabricOpts,
+          { replace: true },
+        );
+        run.accounting_fabric = fabricOpts;
+        run.accounting_fabric_result = fabricResult;
+        fabricPart =
+          fabricResult && fabricResult.purchases
+            ? ` Accounting fabric: ${fabricResult.purchases} purchases, ${fabricResult.credits_sold} credits sold, ${fabricResult.credits_redeemed} redeemed, £${Math.round((fabricResult.deferred_liability_pence || 0) / 100)} deferred liability.`
+            : "";
+      } else {
+        run.exclude_accounting = true;
+        if (!run.accounting_fabric) run.accounting_fabric = {};
+        run.accounting_fabric.enabled = false;
+        fabricPart = " Accounting DB operations excluded.";
+      }
       await supabaseFn("scenario-runs", { action: "save", run });
-      const fabricPart =
-        fabricResult && fabricResult.purchases
-          ? ` Accounting fabric: ${fabricResult.purchases} purchases, ${fabricResult.credits_sold} credits sold, ${fabricResult.credits_redeemed} redeemed, £${Math.round((fabricResult.deferred_liability_pence || 0) / 100)} deferred liability.`
-          : "";
       const refreshWhen = now.toLocaleString("en-GB", {
         timeZone: "Europe/London",
         day: "numeric",

@@ -33,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260623130358" />
+  <meta name="walk-build" content="20260624034038" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" />
@@ -1128,6 +1128,11 @@
         <p class="hint mb-1" id="phones-hint">Run always fresh-installs ticked phones: customer = walk-test build (field log on), merchant = merchant app.</p>
         <div class="phone-rows" id="phone-rows">
           <p class="hint mb-0">Loading…</p>
+        </div>
+
+        <div style="margin: 0.75rem 0; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8rem; line-height: 1.4; color: var(--muted); cursor: pointer;">
+          <input type="checkbox" id="exclude-accounting" style="width: auto; margin-top: 0.15rem; cursor: pointer;" />
+          <label for="exclude-accounting" style="cursor: pointer;">Exclude merchant accounting DB operations (speeds up setup)</label>
         </div>
 
         <button type="button" class="btn btn-primary" id="btn-run" disabled>Run scenario</button>

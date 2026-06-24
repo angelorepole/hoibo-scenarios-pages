@@ -1618,6 +1618,7 @@
     }
     renderDevicePick();
     const deviceList = selectedDevices();
+    const excludeAcc = el("exclude-accounting")?.checked || false;
     pendingRunBody = {
       preset_id: el("preset").value,
       lat: parseFloat(el("lat").value),
@@ -1626,6 +1627,7 @@
       confirm_prod: consoleEnvLabel === "PROD",
       devices: deviceList,
       accounting_fabric: defaultAccountingFabric(),
+      exclude_accounting: excludeAcc,
     };
     openConfirmMapModal(deviceList);
   }
