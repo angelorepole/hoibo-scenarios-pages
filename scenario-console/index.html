@@ -33,7 +33,7 @@
   <meta name="Diffbot" content="noindex, nofollow">
   <meta name="Omgilibot" content="noindex, nofollow">
   <meta name="YouBot" content="noindex, nofollow">
-  <meta name="walk-build" content="20260624034038" />
+  <meta name="walk-build" content="20260624035144" />
   <title>Scenarios — Hoibò Dev Console</title>
   <link rel="icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/hoibo-scenarios-pages/assets/icons/Hoibo_pin.svg" />
@@ -1116,9 +1116,17 @@
         <button type="button" class="btn btn-secondary" id="btn-gps">Use my location</button>
         <p class="hint">Pan anywhere, then <strong>click</strong> the map for the orange centre dot and dashed circle. Long-press works on phone/iPad. Shops seed inside the circle.
         </p>
-        <div class="coords-row">
+        <div class="coords-row" id="coords-row">
           <div><label for="lat" class="form-label">Lat</label><input id="lat" type="number" step="any" readonly placeholder="—" /></div>
           <div><label for="lng" class="form-label">Lng</label><input id="lng" type="number" step="any" readonly placeholder="—" /></div>
+        </div>
+
+        <div id="multiarea-zones-block" style="margin-top: 0.5rem;" hidden>
+          <label class="form-label">Commute zones (max 4)</label>
+          <ul id="multiarea-zones-list" style="list-style: none; padding-left: 0; font-size: 0.78rem; color: var(--muted); margin: 0 0 0.5rem; display: flex; flex-direction: column; gap: 0.35rem;">
+            <li>No zones selected. Click the map to add a zone.</li>
+          </ul>
+          <button type="button" class="btn btn-secondary btn-xs" id="btn-clear-zones" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; width: auto; display: none;">Clear zones</button>
         </div>
 
         <div class="phones-label-row">

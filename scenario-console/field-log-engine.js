@@ -64,6 +64,27 @@
       }
     }
   ],
+  "commute-multiarea": [
+    {
+      "id": "offers-loaded",
+      "where": {
+        "minOfferCount": 1
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    },
+    {
+      "id": "offer-radius-density",
+      "description": "Enough offers inside user offer-radius setting",
+      "where": {
+        "offerRadiusDensityMet": true
+      },
+      "expect": {
+        "minMatches": 1
+      }
+    }
+  ],
   "below-gate": [
     {
       "id": "offers-loaded",
@@ -680,6 +701,41 @@
           "id": "station-cluster",
           "where": {
             "nearStationCluster": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        }
+      ]
+    }
+  ],
+  "commute-multiarea": [
+    {
+      "id": "movement-or-commute",
+      "description": "Walking or commute session while crossing the area",
+      "rules": [
+        {
+          "id": "walking",
+          "where": {
+            "activity": "walking"
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "commute-walk",
+          "where": {
+            "commuteToWalk": true
+          },
+          "expect": {
+            "minMatches": 1
+          }
+        },
+        {
+          "id": "on-route",
+          "where": {
+            "onRouteOnTime": true
           },
           "expect": {
             "minMatches": 1

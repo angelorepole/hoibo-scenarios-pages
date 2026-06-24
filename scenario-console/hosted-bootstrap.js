@@ -585,6 +585,7 @@
         confirm_prod: body.confirm_prod,
         default_radius_m: catalog.defaultRadiusM,
         accounting_fabric: body.exclude_accounting ? { enabled: false } : undefined,
+        zones: body.zones,
       });
       return {
         ok: true,

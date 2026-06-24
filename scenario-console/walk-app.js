@@ -69,6 +69,8 @@
   let centerMarker = null;
   let radiusCircle = null;
   let shopMarkers = [];
+  let draftZones = [];
+  let runZoneOverlays = [];
   let radiusM = 800;
   let hasCenter = false;
   let suppressNextClick = false;
@@ -585,6 +587,7 @@
         presetSel.appendChild(o);
       });
     presetSel.value = id;
+    syncScenarioUi(match);
   }
 
   function playbookStepStatus(step, prog) {
@@ -757,9 +760,15 @@
       abandonBtn.hidden = !currentRun;
       abandonBtn.disabled = !currentRun;
     }
+    const presetSel = el("preset");
+    const p = scenarioList.find((x) => x.id === presetSel?.value);
+    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+
     if (!hasCenter) {
       hint.hidden = false;
-      hint.textContent = "Set centre pin first — then Run scenario.";
+      hint.textContent = isMultiarea
+        ? "Select commute zones (1-4) on map first — then Run scenario."
+        : "Set centre pin first — then Run scenario.";
     } else if (currentRun) {
       hint.hidden = false;
       hint.textContent =
@@ -768,7 +777,9 @@
       hint.hidden = false;
       const prep = phonesReadyForRun();
       hint.textContent = prep.ok
-        ? `Ready — confirm the orange circle on the map, then Run (fresh-install + seed on ${env}).`
+        ? (isMultiarea
+          ? `Ready — confirm the commute zones on the map, then Run (fresh-install + seed on ${env}).`
+          : `Ready — confirm the orange circle on the map, then Run (fresh-install + seed on ${env}).`)
         : prep.reason;
     }
     updateRunUiMode();
@@ -938,8 +949,40 @@
     const now = Date.now();
     if (now - lastCenterPlaceMs < 80) return false;
     lastCenterPlaceMs = now;
-    setCenter(lat, lng, { pan: false });
-    return true;
+
+    const presetSel = el("preset");
+    const p = scenarioList.find((x) => x.id === presetSel.value);
+    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+
+    if (isMultiarea) {
+      if (draftZones.length >= 4) {
+        setStatus("Max 4 commute zones allowed.", false);
+        return false;
+      }
+      const marker = L.marker([lat, lng], {
+        icon: centrePinIcon,
+        zIndexOffset: 1000,
+        interactive: false,
+      }).addTo(map);
+
+      const circle = L.circle([lat, lng], {
+        radius: radiusM,
+        color: "#f59207",
+        weight: 2,
+        fillColor: "#f59207",
+        fillOpacity: 0.08,
+        dashArray: "6 4",
+        interactive: false,
+      }).addTo(map);
+
+      draftZones.push({ lat, lng, marker, circle });
+      updateDraftZonesUi();
+      setStatus("Commute zone added.", true);
+      return true;
+    } else {
+      setCenter(lat, lng, { pan: false });
+      return true;
+    }
   }
 
   function setupMapCenterInput() {
@@ -1032,6 +1075,111 @@
     hasCenter = false;
     if (el("lat")) el("lat").value = "";
     if (el("lng")) el("lng").value = "";
+    clearDraftZones();
+  }
+
+  function clearDraftZones() {
+    draftZones.forEach((z) => {
+      if (z.marker) map.removeLayer(z.marker);
+      if (z.circle) map.removeLayer(z.circle);
+    });
+    draftZones = [];
+    updateDraftZonesUi();
+  }
+
+  function clearRunZoneOverlays() {
+    runZoneOverlays.forEach((ol) => map.removeLayer(ol));
+    runZoneOverlays = [];
+  }
+
+  function updateDraftZonesUi() {
+    const list = el("multiarea-zones-list");
+    const clearBtn = el("btn-clear-zones");
+    if (!list) return;
+    list.innerHTML = "";
+    
+    const zonesSource = currentRun && currentRun.zones ? currentRun.zones : draftZones;
+    const isEditing = !currentRun;
+    
+    if (zonesSource.length === 0) {
+      list.innerHTML = "<li>No zones selected. Click the map to add a zone.</li>";
+      if (clearBtn) clearBtn.style.display = "none";
+      hasCenter = false;
+    } else {
+      zonesSource.forEach((z, i) => {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.justifyContent = "space-between";
+        li.style.alignItems = "center";
+        
+        const span = document.createElement("span");
+        span.textContent = `Zone ${i + 1}: ${z.lat.toFixed(5)}, ${z.lng.toFixed(5)}`;
+        
+        li.appendChild(span);
+        
+        if (isEditing) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn btn-link btn-xs text-danger";
+          btn.style.padding = "0";
+          btn.style.width = "auto";
+          btn.textContent = "Remove";
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            removeDraftZoneAt(i);
+          };
+          li.appendChild(btn);
+        }
+        
+        list.appendChild(li);
+      });
+      if (clearBtn) clearBtn.style.display = isEditing ? "block" : "none";
+      hasCenter = true;
+    }
+    updateRunButtons();
+  }
+
+  function removeDraftZoneAt(index) {
+    const z = draftZones[index];
+    if (z) {
+      if (z.marker) map.removeLayer(z.marker);
+      if (z.circle) map.removeLayer(z.circle);
+    }
+    draftZones.splice(index, 1);
+    updateDraftZonesUi();
+  }
+
+  function syncScenarioUi(p) {
+    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+    const coordsRow = el("coords-row");
+    const multiareaBlock = el("multiarea-zones-block");
+    if (isMultiarea) {
+      if (coordsRow) coordsRow.hidden = true;
+      if (multiareaBlock) multiareaBlock.hidden = false;
+      if (centerMarker) {
+        map.removeLayer(centerMarker);
+        centerMarker = null;
+      }
+      if (radiusCircle) {
+        map.removeLayer(radiusCircle);
+        radiusCircle = null;
+      }
+      hasCenter = draftZones.length > 0;
+      updateDraftZonesUi();
+    } else {
+      if (coordsRow) coordsRow.hidden = false;
+      if (multiareaBlock) multiareaBlock.hidden = true;
+      clearDraftZones();
+      const savedCenter = localStorage.getItem(CENTER_KEY);
+      if (savedCenter) {
+        try {
+          const { lat, lng } = JSON.parse(savedCenter);
+          setCenter(lat, lng, { skipPersist: true });
+        } catch (e) {
+          console.error("Error parsing saved center", e);
+        }
+      }
+    }
   }
 
   function resetMapViewDefault() {
@@ -1095,6 +1243,7 @@
   function clearShopMarkers() {
     shopMarkers.forEach((m) => map.removeLayer(m));
     shopMarkers = [];
+    clearRunZoneOverlays();
   }
 
   function showRun(run) {
@@ -1112,14 +1261,45 @@
     clearShopMarkers();
 
     const r = run.radius_m || radiusM;
-    if (run.center) {
+    const bounds = [];
+
+    if (run.zones && run.zones.length > 0) {
+      if (centerMarker) {
+        map.removeLayer(centerMarker);
+        centerMarker = null;
+      }
+      if (radiusCircle) {
+        map.removeLayer(radiusCircle);
+        radiusCircle = null;
+      }
+      run.zones.forEach((z) => {
+        const marker = L.marker([z.lat, z.lng], {
+          icon: centrePinIcon,
+          zIndexOffset: 1000,
+          interactive: false,
+        }).addTo(map);
+
+        const circle = L.circle([z.lat, z.lng], {
+          radius: r,
+          color: "#f59207",
+          weight: 2,
+          fillColor: "#f59207",
+          fillOpacity: 0.08,
+          dashArray: "6 4",
+          interactive: false,
+        }).addTo(map);
+
+        runZoneOverlays.push(marker);
+        runZoneOverlays.push(circle);
+        bounds.push([z.lat, z.lng]);
+      });
+      updateDraftZonesUi();
+    } else if (run.center) {
       radiusM = r;
       setCenter(run.center.lat, run.center.lng, { pan: false });
       drawRadiusCircle(run.center.lat, run.center.lng);
+      bounds.push([run.center.lat, run.center.lng]);
     }
-
-    const bounds = [];
-    if (run.center) bounds.push([run.center.lat, run.center.lng]);
 
     const list = el("shop-list");
     list.innerHTML = ""; // Empty sidebar list since redeem elements are now in the map popup
@@ -1538,6 +1718,7 @@
         seedEl.textContent = "";
         seedEl.hidden = true;
       }
+      if (!currentRun) syncScenarioUi(p);
       if (!currentRun) applyScenarioRadius(p);
       renderPlaybook(p.playbook || [], p.passCriteria || p.fieldLogExpect || [], p.multiDay);
       if (!currentRun) {
@@ -1570,9 +1751,10 @@
   let pendingRunBody = null;
 
   function openConfirmMapModal(deviceList) {
-    const lat = parseFloat(el("lat").value);
-    const lng = parseFloat(el("lng").value);
     const presetSel = el("preset");
+    const p = scenarioList.find((x) => x.id === presetSel.value);
+    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+
     const scenarioLabel =
       presetSel?.options[presetSel.selectedIndex]?.textContent?.trim() || presetSel?.value || "—";
     const coords = el("confirm-map-coords");
@@ -1580,12 +1762,29 @@
     const phones = el("confirm-map-phones");
     const scenario = el("confirm-map-scenario");
     if (scenario) scenario.textContent = scenarioLabel;
-    if (coords) coords.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+    if (isMultiarea) {
+      if (coords) {
+        coords.textContent = draftZones
+          .map((z, idx) => `Zone ${idx + 1}: ${z.lat.toFixed(6)}, ${z.lng.toFixed(6)}`)
+          .join(" | ");
+      }
+      if (map && draftZones.length > 0) {
+        const bounds = draftZones.map(z => [z.lat, z.lng]);
+        map.fitBounds(bounds, { padding: [32, 32], maxZoom: 16 });
+      }
+    } else {
+      const lat = parseFloat(el("lat").value);
+      const lng = parseFloat(el("lng").value);
+      if (coords) coords.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      if (map && radiusCircle) {
+        map.fitBounds(radiusCircle.getBounds(), { padding: [32, 32], maxZoom: 16 });
+      }
+    }
+
     if (radius) radius.textContent = `${radiusM} m`;
     if (phones) phones.textContent = deviceList.map((d) => d.name || d.slot).join(", ") || "—";
-    if (map && radiusCircle) {
-      map.fitBounds(radiusCircle.getBounds(), { padding: [32, 32], maxZoom: 16 });
-    }
+
     const modal = el("confirm-map-modal");
     if (modal) modal.hidden = false;
   }
@@ -1596,10 +1795,18 @@
   }
 
   async function runScenario() {
-    if (!hasCenter) {
+    const presetSel = el("preset");
+    const p = scenarioList.find((x) => x.id === presetSel.value);
+    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+
+    if (isMultiarea && draftZones.length === 0) {
+      setStatus("Select at least one zone on the map first.", false);
+      return;
+    } else if (!isMultiarea && !hasCenter) {
       setStatus("Set centre pin first — tap map or GPS.", false);
       return;
     }
+
     const prep = phonesReadyForRun();
     if (!prep.ok) {
       setStatus(prep.reason, false);
@@ -1619,15 +1826,27 @@
     renderDevicePick();
     const deviceList = selectedDevices();
     const excludeAcc = el("exclude-accounting")?.checked || false;
+
+    let finalLat = parseFloat(el("lat").value);
+    let finalLng = parseFloat(el("lng").value);
+    let zonesPayload = null;
+
+    if (isMultiarea) {
+      finalLat = draftZones[0].lat;
+      finalLng = draftZones[0].lng;
+      zonesPayload = draftZones.map(z => ({ lat: z.lat, lng: z.lng }));
+    }
+
     pendingRunBody = {
-      preset_id: el("preset").value,
-      lat: parseFloat(el("lat").value),
-      lng: parseFloat(el("lng").value),
+      preset_id: presetSel.value,
+      lat: finalLat,
+      lng: finalLng,
       radius_m: radiusM,
       confirm_prod: consoleEnvLabel === "PROD",
       devices: deviceList,
       accounting_fabric: defaultAccountingFabric(),
       exclude_accounting: excludeAcc,
+      zones: zonesPayload,
     };
     openConfirmMapModal(deviceList);
   }
@@ -1923,6 +2142,7 @@
   };
 
   el("btn-run").onclick = runScenario;
+  el("btn-clear-zones").onclick = clearDraftZones;
   el("btn-refresh-phones")?.addEventListener("click", async () => {
     const btn = el("btn-refresh-phones");
     if (btn) {
