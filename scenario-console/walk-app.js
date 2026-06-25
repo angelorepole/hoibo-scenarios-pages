@@ -860,6 +860,7 @@
   }
 
   const LEAFLET_IMAGES = "https://unpkg.com/leaflet@1.9.4/dist/images/";
+  const ZONE_COLORS = ["#f59207", "#22c55e", "#3b82f6", "#a855f7"];
   const centrePinIcon = L.divIcon({
     className: "center-pin",
     html: '<div class="center-pin-dot"></div>',
@@ -878,6 +879,21 @@
   });
 
   const MAP_MIN_ZOOM = 2;
+
+  function zoneColor(index) {
+    return ZONE_COLORS[index % ZONE_COLORS.length];
+  }
+
+  function zonePinIcon(index) {
+    const color = zoneColor(index);
+    return L.divIcon({
+      className: "center-pin",
+      html:
+        `<div class="center-pin-dot" style="background:${color};border-color:${color};"></div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+    });
+  }
 
   function refreshMapSize() {
     if (!map) return;
@@ -962,12 +978,23 @@
     const isMultiarea = isMultiareaScenario(p);
 
     if (isMultiarea) {
+      // Multi-area mode should only show the zone circles, never the single-centre circle.
+      if (centerMarker) {
+        map.removeLayer(centerMarker);
+        centerMarker = null;
+      }
+      if (radiusCircle) {
+        map.removeLayer(radiusCircle);
+        radiusCircle = null;
+      }
       if (draftZones.length >= 4) {
         setStatus("Max 4 commute zones allowed.", false);
         return false;
       }
+      const zoneIdx = draftZones.length;
+      const color = zoneColor(zoneIdx);
       const marker = L.marker([lat, lng], {
-        icon: centrePinIcon,
+        icon: zonePinIcon(zoneIdx),
         zIndexOffset: 1000,
         interactive: true,
         draggable: true,
@@ -975,9 +1002,9 @@
 
       const circle = L.circle([lat, lng], {
         radius: radiusM,
-        color: "#f59207",
+        color,
         weight: 2,
-        fillColor: "#f59207",
+        fillColor: color,
         fillOpacity: 0.08,
         dashArray: "6 4",
         interactive: false,
@@ -1132,7 +1159,8 @@
         li.style.alignItems = "center";
         
         const span = document.createElement("span");
-        span.textContent = `Zone ${i + 1}: ${z.lat.toFixed(5)}, ${z.lng.toFixed(5)}`;
+        const color = zoneColor(i);
+        span.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:${color};margin-right:6px;vertical-align:middle;"></span>Zone ${i + 1}: ${z.lat.toFixed(5)}, ${z.lng.toFixed(5)}`;
         
         li.appendChild(span);
         
@@ -1291,18 +1319,19 @@
         map.removeLayer(radiusCircle);
         radiusCircle = null;
       }
-      run.zones.forEach((z) => {
+      run.zones.forEach((z, i) => {
+        const color = zoneColor(i);
         const marker = L.marker([z.lat, z.lng], {
-          icon: centrePinIcon,
+          icon: zonePinIcon(i),
           zIndexOffset: 1000,
           interactive: false,
         }).addTo(map);
 
         const circle = L.circle([z.lat, z.lng], {
           radius: r,
-          color: "#f59207",
+          color,
           weight: 2,
-          fillColor: "#f59207",
+          fillColor: color,
           fillOpacity: 0.08,
           dashArray: "6 4",
           interactive: false,
