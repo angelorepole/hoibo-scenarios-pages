@@ -91,6 +91,7 @@
   let manualDoneSteps = {};
   let lastPlaybook = { steps: [], allSteps: [], expects: [], multiDay: false };
   let redeemExpectedForRun = false;
+  let activeRunSyncTimer = null;
 
   function playbookExpectsRedeem(playbook) {
     if (window.ScenarioDisplay?.playbookExpectsRedeem) {
@@ -1930,6 +1931,32 @@
     }
   }
 
+  function startActiveRunAutoSync() {
+    if (activeRunSyncTimer) return;
+    activeRunSyncTimer = setInterval(async () => {
+      if (!currentRun?.run_id || document.visibilityState !== "visible") return;
+      try {
+        const data = await api(`/api/scenarios/run/${currentRun.run_id}`);
+        const run = data?.run;
+        if (!run) return;
+        const before = lastOfferRefreshIso(currentRun);
+        const after = lastOfferRefreshIso(run);
+        if (before !== after) {
+          showRun(run);
+          setStatus(
+            appendLastOfferRefreshNote(
+              "Offers refreshed by cron — pull feed on phone.",
+              run,
+            ),
+            true,
+          );
+        }
+      } catch (_) {
+        // Ignore transient polling errors; manual actions still surface errors.
+      }
+    }, 60_000);
+  }
+
   async function refreshAfterWalkTargetChange() {
     const envRes = await api("/api/environment");
     applyWalkEnvironment(envRes);
@@ -2168,6 +2195,7 @@
   el("btn-refresh-seed").onclick = refreshRunSeed;
   el("btn-cleanup").onclick = cleanupRun;
   el("btn-abandon").onclick = abandonRun;
+  startActiveRunAutoSync();
 
   const confirmMapModal = el("confirm-map-modal");
   el("btn-close-confirm-map").onclick = closeConfirmMapModal;
