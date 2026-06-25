@@ -136,6 +136,12 @@
     return currentRun?.scenario_id || currentRun?.preset_id || el("preset").value;
   }
 
+  function isMultiareaScenario(row) {
+    if (!row) return false;
+    if (row.isMultiarea === true) return true;
+    return !!(row.seed && row.seed.multiarea);
+  }
+
   function formatWhen(iso) {
     if (!iso) return "—";
     try {
@@ -763,7 +769,7 @@
     }
     const presetSel = el("preset");
     const p = scenarioList.find((x) => x.id === presetSel?.value);
-    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+    const isMultiarea = isMultiareaScenario(p);
 
     if (!hasCenter) {
       hint.hidden = false;
@@ -953,7 +959,7 @@
 
     const presetSel = el("preset");
     const p = scenarioList.find((x) => x.id === presetSel.value);
-    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+    const isMultiarea = isMultiareaScenario(p);
 
     if (isMultiarea) {
       if (draftZones.length >= 4) {
@@ -963,7 +969,8 @@
       const marker = L.marker([lat, lng], {
         icon: centrePinIcon,
         zIndexOffset: 1000,
-        interactive: false,
+        interactive: true,
+        draggable: true,
       }).addTo(map);
 
       const circle = L.circle([lat, lng], {
@@ -976,7 +983,18 @@
         interactive: false,
       }).addTo(map);
 
-      draftZones.push({ lat, lng, marker, circle });
+      const zone = { lat, lng, marker, circle };
+      marker.on("drag", (ev) => {
+        const ll = ev.target.getLatLng();
+        zone.lat = ll.lat;
+        zone.lng = ll.lng;
+        zone.circle.setLatLng(ll);
+      });
+      marker.on("dragend", () => {
+        updateDraftZonesUi();
+        setStatus("Zone moved.", true);
+      });
+      draftZones.push(zone);
       updateDraftZonesUi();
       setStatus("Commute zone added.", true);
       return true;
@@ -1151,7 +1169,7 @@
   }
 
   function syncScenarioUi(p) {
-    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+    const isMultiarea = isMultiareaScenario(p);
     const coordsRow = el("coords-row");
     const multiareaBlock = el("multiarea-zones-block");
     if (isMultiarea) {
@@ -1754,7 +1772,7 @@
   function openConfirmMapModal(deviceList) {
     const presetSel = el("preset");
     const p = scenarioList.find((x) => x.id === presetSel.value);
-    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+    const isMultiarea = isMultiareaScenario(p);
 
     const scenarioLabel =
       presetSel?.options[presetSel.selectedIndex]?.textContent?.trim() || presetSel?.value || "—";
@@ -1798,7 +1816,7 @@
   async function runScenario() {
     const presetSel = el("preset");
     const p = scenarioList.find((x) => x.id === presetSel.value);
-    const isMultiarea = !!(p && p.seed && p.seed.multiarea);
+    const isMultiarea = isMultiareaScenario(p);
 
     if (isMultiarea && draftZones.length === 0) {
       setStatus("Select at least one zone on the map first.", false);
