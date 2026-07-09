@@ -166,12 +166,27 @@
       .replace(/>/g, "&gt;");
   }
 
+  function paintFinishActionStatus(msg, tone) {
+    const box = el("finish-run-action-status");
+    if (!box) return;
+    if (!msg) {
+      box.hidden = true;
+      box.textContent = "";
+      box.className = "finish-run-action-status";
+      return;
+    }
+    box.hidden = false;
+    box.textContent = msg;
+    box.className = `finish-run-action-status ${tone || "pending"}`;
+  }
+
   function openFinishRunModal() {
     if (!S.currentRun) return;
     const modal = el("finish-run-modal");
     const notes = el("finish-run-notes");
     const warn = el("finish-run-warn");
     if (notes) notes.value = "";
+    paintFinishActionStatus(null);
     paintFinishRunLogStatus();
     if (warn) {
       const shortId = S.currentRun.short_id;
@@ -199,13 +214,26 @@
   }
 
   async function submitFinishRun() {
-    if (!S.currentRun) return;
+    if (S.finishSubmitting) return;
+    const runId = S.currentRun?.run_id;
+    if (!runId) {
+      paintFinishActionStatus("No active run to finish — close and refresh the page.", "fail");
+      setStatus("No active run to finish.", false);
+      return;
+    }
     const notes = el("finish-run-notes")?.value?.trim() || undefined;
     const outcome = resolveFinishOutcomeFromLog();
     const confirmBtn = el("btn-finish-confirm");
+    const cancelBtn = el("btn-finish-cancel");
+    S.finishSubmitting = true;
     btnLoading(confirmBtn, true);
+    if (cancelBtn) cancelBtn.disabled = true;
+    paintFinishActionStatus(
+      `Removing seeded shops and archiving run on ${S.consoleEnvLabel}… (large runs can take a minute)`,
+      "pending",
+    );
     try {
-      await apiPost("/api/scenarios/cleanup", { run_id: S.currentRun.run_id, outcome, notes });
+      await apiPost("/api/scenarios/cleanup", { run_id: runId, outcome, notes });
       closeFinishRunModal();
       S.currentRun = null;
       S.lastAnalysis = null;
@@ -218,9 +246,13 @@
       SC.refreshPlaybookStatus();
       await SC.loadRunHistory();
     } catch (e) {
-      setStatus(String(e.message || e), false);
+      const msg = String(e.message || e);
+      paintFinishActionStatus(msg, "fail");
+      setStatus(msg, false);
     } finally {
+      S.finishSubmitting = false;
       btnLoading(confirmBtn, false);
+      if (cancelBtn) cancelBtn.disabled = false;
     }
   }
 

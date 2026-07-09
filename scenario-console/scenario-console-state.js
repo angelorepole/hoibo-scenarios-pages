@@ -54,6 +54,7 @@
       redeemExpectedForRun: false,
       activeRunSyncTimer: null,
       pendingRunBody: null,
+      finishSubmitting: false,
       mapResizeHooked: false,
       lastCenterPlaceMs: 0,
     },

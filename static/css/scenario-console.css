@@ -883,6 +883,23 @@ select:disabled {
   margin: 0 0 0.75rem;
   line-height: 1.45;
 }
+.finish-run-action-status {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+.finish-run-action-status.pending {
+  color: var(--muted);
+  border-color: var(--border);
+}
+.finish-run-action-status.fail {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(255, 92, 106, 0.08);
+}
 .finish-run-warn {
   font-size: 0.8rem;
   color: var(--muted);

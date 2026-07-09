@@ -570,7 +570,19 @@ Be concise. Plain English.`;
               "Fix: Bottom tab Settings → Offer radius.",
         });
       }
-      if (expected.dealAlertsOn != null) {
+      if (expected.dealAlertFrequency != null) {
+        const want = String(expected.dealAlertFrequency).toLowerCase();
+        const got = String(actual.dealAlertFrequency || "off").toLowerCase();
+        const ok = got === want;
+        out.push({
+          id: "phone-deal-alerts",
+          pass: ok,
+          detail: ok
+            ? `Deal alert frequency ${got} (matches scenario)`
+            : `You should have set Deal alerts to ${want} — log shows ${got}. ` +
+              "Fix: Bottom tab Settings → Notifications → Deal alerts.",
+        });
+      } else if (expected.dealAlertsOn != null) {
         const got = actual.dealAlertsOn !== false;
         const ok = got === expected.dealAlertsOn;
         out.push({
