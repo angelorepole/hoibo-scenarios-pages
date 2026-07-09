@@ -98,7 +98,7 @@
     },
     {
       "id": "below-score",
-      "description": "Intent score below allow bar (70)",
+      "description": "Intent score below allow bar (20)",
       "where": {
         "maxIntentScore": 19,
         "minOfferCount": 1
@@ -995,9 +995,17 @@
     const offerCount = num(entry, "offerCount");
     if (filter.minOfferCount != null && (offerCount == null || offerCount < filter.minOfferCount)) return false;
     if (filter.maxOfferCount != null && (offerCount == null || offerCount > filter.maxOfferCount)) return false;
-    const opp = num(entry, "opportunitySum");
-    if (filter.minOpportunitySum != null && (opp == null || opp < filter.minOpportunitySum)) return false;
-    if (filter.maxOpportunitySum != null && (opp == null || opp > filter.maxOpportunitySum)) return false;
+    const densityPts = (() => {
+      const top = num(entry, "offerDensityPoints");
+      if (top != null) return top;
+      const v = entry.verbose;
+      if (v && typeof v === "object" && v.scoreBreakdown && typeof v.scoreBreakdown === "object") {
+        const tier = v.scoreBreakdown.offerDensityTier;
+        if (tier && typeof tier === "object" && typeof tier.points === "number") return tier.points;
+      }
+      return null;
+    })();
+    if (filter.minOfferDensityPoints != null && (densityPts == null || densityPts < filter.minOfferDensityPoints)) return false;
     const score = num(entry, "intentScore");
     if (filter.minIntentScore != null && (score == null || score < filter.minIntentScore)) return false;
     if (filter.maxIntentScore != null && (score == null || score > filter.maxIntentScore)) return false;
@@ -1006,15 +1014,13 @@
     if (filter.maxSlotStrength != null && (strength == null || strength > filter.maxSlotStrength)) return false;
 
     for (const key of [
-      "memoryColdStart", "memoryNewArea", "anchorEnter", "anchorExit",
-      "surfaced", "wouldDeliver", "realOuting", "inLunchWindow",
-      "onRouteOnTime", "nearStationCluster", "carToWalk", "insideRingFromAnchor",
+      "anchorEnter", "anchorExit",
+      "surfaced", "wouldDeliver", "inLunchWindow",
+      "onRouteOnTime", "nearStationCluster",
     ]) {
       if (key in filter && boolVal(entry, key) !== filter[key]) return false;
     }
 
-    const wifiHint = asStringArray(filter.wifiHint);
-    if (wifiHint && !wifiHint.includes(strVal(entry, "wifiHint") ?? "")) return false;
     const lunchWindow = asStringArray(filter.lunchWindow);
     if (lunchWindow && !lunchWindow.includes(strVal(entry, "lunchWindow") ?? "")) return false;
     const mealCorridor = asStringArray(filter.mealCorridor);

@@ -293,15 +293,11 @@
       const placesSec = document.createElement("section");
       placesSec.innerHTML = "<h2>Places on this phone</h2>";
       const places = report.learnedPlaces || [];
-      const hasBase = places.some((p) =>
-        p.label === "Habitual Base" || p.label === "Work" || p.label === "Home",
-      );
-      const summary = document.createElement("p");
-      summary.className = "meta";
-      summary.textContent =
-        "Habitual place identified: " + (hasBase ? "Yes" : "No");
-      placesSec.appendChild(summary);
       if (places.length) {
+        const summary = document.createElement("p");
+        summary.className = "meta";
+        summary.textContent = "Saved places on phone: " + places.length;
+        placesSec.appendChild(summary);
         const ul = document.createElement("ul");
         places.forEach((p) => {
           const li = document.createElement("li");
@@ -319,7 +315,7 @@
       } else {
         const p = document.createElement("p");
         p.className = "meta";
-        p.textContent = "No Habitual place saved on this device yet.";
+        p.textContent = "No saved places on this device.";
         placesSec.appendChild(p);
       }
       root.appendChild(placesSec);

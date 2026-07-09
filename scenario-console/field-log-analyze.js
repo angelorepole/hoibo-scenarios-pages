@@ -14,7 +14,7 @@
           run_id: raw.run_id,
         };
       }
-      if ("opportunitySum" in raw || "gateDecision" in raw) {
+      if ("gateDecision" in raw || "intentScore" in raw) {
         return { entries: [raw] };
       }
     }
@@ -28,15 +28,9 @@
   }
 
   function entryMatches(entry, rule) {
-    const opp = Number(entry.opportunitySum || 0);
-    if ("opportunitySumLt" in rule && !(opp < Number(rule.opportunitySumLt))) return false;
-    if ("opportunitySumLte" in rule && !(opp <= Number(rule.opportunitySumLte))) return false;
-    if ("opportunitySumGt" in rule && !(opp > Number(rule.opportunitySumGt))) return false;
-    if ("opportunitySumGte" in rule && !(opp >= Number(rule.opportunitySumGte))) return false;
-
     for (const key of [
       "gateDecision", "suppressReason", "hardSuppressRule", "activity", "planStyle",
-      "wakeSource", "placeKind", "slotKind", "wifiHint", "lunchWindow", "mealCorridor",
+      "wakeSource", "placeKind", "slotKind", "lunchWindow", "mealCorridor",
     ]) {
       if (!(key in rule)) continue;
       const expected = rule[key];
@@ -165,7 +159,7 @@ ${logJson}
 
 ## Your task
 1. Say **PASS**, **FAIL**, or **INCONCLUSIVE** for this scenario.
-2. Cite specific log entries (time, gateDecision, opportunitySum, activity, surfaced).
+2. Cite specific log entries (time, gateDecision, intentScore, activity, surfaced).
 3. Note if GPS/distance/category settings likely explain a mismatch with seed intent.
 4. For multi-day scenarios, say if affinity / weights improved vs early entries.
 
