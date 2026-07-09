@@ -374,7 +374,7 @@
     },
     {
       "id": "engagement-defer-high-score",
-      "description": "After feed engagement, gate defers even with score \u2265 70",
+      "description": "After feed engagement, gate defers even with score \u2265 20",
       "where": {
         "gateDecision": "defer",
         "deferReason": "engagement_cooldown",
@@ -409,7 +409,7 @@
     },
     {
       "id": "engagement-defer-high-score",
-      "description": "After map pan or pin tap, gate defers even with score \u2265 70",
+      "description": "After map pan or pin tap, gate defers even with score \u2265 20",
       "where": {
         "gateDecision": "defer",
         "deferReason": "engagement_cooldown",
@@ -660,7 +660,7 @@
   "walk-allow": [
     {
       "id": "delivery-path",
-      "description": "Would deliver OR allow score \u2265 70",
+      "description": "Would deliver OR allow score \u2265 20",
       "rules": [
         {
           "id": "would-deliver",
@@ -753,7 +753,7 @@
   "quiet-allow": [
     {
       "id": "quiet-or-deliver",
-      "description": "Quiet plan, would deliver, OR allow score \u2265 70",
+      "description": "Quiet plan, would deliver, OR allow score \u2265 20",
       "rules": [
         {
           "id": "quiet-plan",
