@@ -217,13 +217,24 @@
     return catalogCache;
   }
 
-  function mapScenarioBase(s) {
+  function scenarioRadiusFromSeed(s, catalog) {
+    const seed = s.seed || {};
+    let raw = seed.radiusM;
+    if (raw == null && catalog) raw = catalog.defaultRadiusM;
+    if (raw == null) raw = 800;
+    return Number(raw);
+  }
+
+  function mapScenarioBase(s, catalog) {
+    const seed = s.seed || {};
     return {
       id: s.id,
       label: s.label || s.id,
       purpose: s.purpose || "",
       summary: s.summary || "",
       category: s.category || "intent",
+      isMultiarea: !!seed.multiarea,
+      radiusM: scenarioRadiusFromSeed(s, catalog),
       engineRef: s.engineRef || "",
       acceptanceIds: s.acceptanceIds || [],
       multiDay: !!s.multiDay,
@@ -237,13 +248,13 @@
 
   async function mapScenarioList(catalog) {
     return (catalog.scenarios || catalog.presets || []).map((s) => {
-      const base = mapScenarioBase(s);
+      const base = mapScenarioBase(s, catalog);
       const merged =
         typeof ScenarioDisplay !== "undefined"
           ? ScenarioDisplay.applyHumanCopy({ ...s, ...base })
           : base;
       return {
-        ...mapScenarioBase(merged),
+        ...mapScenarioBase(merged, catalog),
         passCriteria: merged.passCriteria || merged.fieldLogExpect || [],
         fieldLogExpect: merged.passCriteria || merged.fieldLogExpect || [],
       };
@@ -380,6 +391,14 @@
     opts = opts || {};
     const method = (opts.method || "GET").toUpperCase();
     const body = opts.body ? JSON.parse(opts.body) : {};
+
+    const needsFieldLog =
+      path === "/api/scenarios/validate-run-sync" ||
+      path === "/api/scenarios/analyze-log" ||
+      path === "/api/scenarios/playbook-status";
+    if (needsFieldLog && global.ScenarioFieldLogLoader) {
+      await global.ScenarioFieldLogLoader.ensureFieldLogScripts();
+    }
 
     if (path === "/api/environment") return envStatus();
     if (path === "/api/environment/target" && method === "POST") {

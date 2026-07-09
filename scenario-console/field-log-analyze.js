@@ -103,6 +103,34 @@
     return `Automated check PASSED (${passed}/${auto.length})${extra}.`;
   }
 
+  /** Plain-text lines for Finish run modal (failed rules + how to fix). */
+  function formatCheckLogFinishUi(analysis) {
+    if (!analysis || typeof analysis !== "object") {
+      return { headline: null, failedLines: [], summary: null };
+    }
+    const checks = Array.isArray(analysis.checks) ? analysis.checks : [];
+    const failed = checks.filter((c) => c.pass === false);
+    const passed =
+      typeof analysis.checkPassed === "boolean"
+        ? analysis.checkPassed
+        : analysis.ok === true;
+    const headline = passed
+      ? "Check log: pass — will be saved on archive."
+      : failed.length
+        ? `Check log: fail — ${failed.length} rule(s) did not pass.`
+        : "Check log: fail — will be saved on archive.";
+    const failedLines = failed.map((c) => {
+      const label = String(c.id || "rule").replace(/_/g, " ");
+      const detail = String(c.detail || "Failed").trim();
+      return `• ${label}: ${detail}`;
+    });
+    return {
+      headline,
+      failedLines,
+      summary: analysis.summary || summarize(checks, !passed),
+    };
+  }
+
   function buildLlmReviewPrompt(scenario, entries, runMeta) {
     const meta = runMeta || {};
     const logJson = JSON.stringify(entries, null, 2);
@@ -748,6 +776,7 @@ Be concise. Plain English.`;
     analyzeFieldLog,
     buildEngineValidationReport,
     buildLlmReviewPrompt,
+    formatCheckLogFinishUi,
     evaluateEngineRules,
     get WALK_FIELD_LOG_RULES() {
       return engineApi().WALK_FIELD_LOG_RULES;

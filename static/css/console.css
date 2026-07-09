@@ -448,6 +448,14 @@ input:focus, select:focus, textarea:focus {
   font-variant-numeric: tabular-nums;
 }
 
+.report-timeline-delta {
+  font-weight: 500;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-left: 0.35rem;
+  color: #a1a1aa;
+}
+
 .report-timeline-lifecycle .report-timeline-time { color: #93c5fd; }
 .report-timeline-wake .report-timeline-time { color: #86efac; }
 .report-timeline-eval .report-timeline-time { color: #fca5a5; }

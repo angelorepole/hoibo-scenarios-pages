@@ -25,13 +25,7 @@
 
   const SCENARIO_OFFER_START_OFFSET_MINUTES = 15;
 
-  function escapeHtml(text) {
-    return String(text)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
+  const escapeHtml = global.ScenarioHtml.escapeHtml;
 
   function formatMoney(amount) {
     const n = Number(amount);
@@ -81,7 +75,7 @@
     });
     if (msLeft <= 0) {
       return {
-        text: `Expired at ${timeStr} — pull feed (auto-refresh ~3 min)`,
+        text: `Expired at ${timeStr} — cron refresh ~45 min (07:00–22:00 London)`,
         tone: "expired",
       };
     }
@@ -91,6 +85,53 @@
       text: `Expires ${timeStr} (${formatDurationLeft(minsLeft)}) · ${durationMin} min window`,
       tone: minsLeft <= 30 ? "soon" : "live",
     };
+  }
+
+  const SHOP_PIN_TONES = {
+    expired: { color: "#6b7280", label: "Expired" },
+    soon: { color: "#ef4444", label: "<30 min left" },
+    medium: { color: "#f59e0b", label: "31–120 min left" },
+    long: { color: "#6366f1", label: ">120 min left" },
+  };
+
+  const SHOP_PIN_TONE_RANK = { expired: 0, soon: 1, medium: 2, long: 3 };
+
+  function offerPinTone(offer, seedIso, now = new Date()) {
+    const { expires } = offerWindow(offer, seedIso);
+    const msLeft = expires.getTime() - now.getTime();
+    if (msLeft <= 0) return "expired";
+    const minsLeft = Math.ceil(msLeft / 60_000);
+    if (minsLeft <= 30) return "soon";
+    if (minsLeft <= 120) return "medium";
+    return "long";
+  }
+
+  /** Pin tone from the most urgent live offer; expired offers are ignored unless all expired. */
+  function shopPinTone(shop, seedIso, now = new Date()) {
+    const offers = shop?.offers || [];
+    if (!offers.length) return "long";
+    let tone = null;
+    for (const offer of offers) {
+      const next = offerPinTone(offer, seedIso, now);
+      if (next === "expired") continue;
+      if (tone === null || SHOP_PIN_TONE_RANK[next] < SHOP_PIN_TONE_RANK[tone]) {
+        tone = next;
+      }
+    }
+    return tone ?? "expired";
+  }
+
+  function shopPinColor(tone) {
+    return (SHOP_PIN_TONES[tone] || SHOP_PIN_TONES.long).color;
+  }
+
+  function shopPinLegendHtml() {
+    return Object.values(SHOP_PIN_TONES)
+      .map(
+        (row) =>
+          `<span class="shop-pin-legend-item"><span class="shop-pin-legend-swatch" style="background:${row.color}"></span>${escapeHtml(row.label)}</span>`,
+      )
+      .join("");
   }
 
   function formatShopPopupHtml(shop, shopIndex, options) {
@@ -238,6 +279,10 @@
     filterPlaybookForHosted,
     formatOfferDeal,
     offerExpiryLine,
+    offerPinTone,
+    shopPinTone,
+    shopPinColor,
+    shopPinLegendHtml,
     formatShopPopupHtml,
     SCENARIO_OFFER_START_OFFSET_MINUTES,
   };
