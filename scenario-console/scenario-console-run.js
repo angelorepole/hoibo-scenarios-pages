@@ -503,7 +503,7 @@
     if (!S.currentRun) return;
     if (
       !confirm(
-        `Refresh offers and credit economy for run ${S.currentRun.short_id}?\n\nSame shops — new expiry times and fresh synthetic purchases/redemptions. Then pull feed on the phone.`,
+        `Refresh merchants & offers for run ${S.currentRun.short_id}?\n\nThis will re-run the randomizer to place new coordinates and merchants under the same run ID. Then pull feed on the phone.`,
       )
     )
       return;
@@ -512,7 +512,7 @@
     try {
       const data = await apiPost("/api/scenarios/refresh-seed", { run_id: S.currentRun.run_id });
       if (data.run) showRun(data.run);
-      setStatus(data.seedOutput || appendLastOfferRefreshNote("Offers refreshed — pull feed on phone.", data.run), true);
+      setStatus(data.seedOutput || appendLastOfferRefreshNote("Merchants & offers refreshed — pull feed on phone.", data.run), true);
       SC.refreshPlaybookStatus();
     } catch (e) {
       setStatus(String(e.message || e), false);
