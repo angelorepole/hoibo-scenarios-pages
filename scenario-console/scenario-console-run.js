@@ -134,6 +134,7 @@
     runBtn.disabled = !S.hasCenter || !!S.currentRun || !SC.phonesReadyForRun().ok;
     cleanupBtn.disabled = !S.currentRun;
     if (refreshSeedBtn) {
+      refreshSeedBtn.textContent = isHostedConsole() ? "Refresh offers" : "Refresh merchants & offers";
       refreshSeedBtn.hidden = !S.currentRun;
       refreshSeedBtn.disabled = !S.currentRun;
     }
@@ -501,10 +502,13 @@
 
   async function refreshRunSeed() {
     if (!S.currentRun) return;
+    const hosted = isHostedConsole();
+    const shortId = S.currentRun.short_id || (S.currentRun.run_id || "").slice(0, 8);
+    const confirmText = hosted
+      ? `Refresh offers for run ${shortId}?\n\nThis keeps the same merchants and map pins, and refreshes offer windows under the same run ID. Then pull feed on the phone.`
+      : `Refresh merchants & offers for run ${shortId}?\n\nThis will re-run the randomizer to place new coordinates and merchants under the same run ID. Then pull feed on the phone.`;
     if (
-      !confirm(
-        `Refresh merchants & offers for run ${S.currentRun.short_id}?\n\nThis will re-run the randomizer to place new coordinates and merchants under the same run ID. Then pull feed on the phone.`,
-      )
+      !confirm(confirmText)
     )
       return;
     const btn = el("btn-refresh-seed");
@@ -512,7 +516,10 @@
     try {
       const data = await apiPost("/api/scenarios/refresh-seed", { run_id: S.currentRun.run_id });
       if (data.run) showRun(data.run);
-      setStatus(data.seedOutput || appendLastOfferRefreshNote("Merchants & offers refreshed — pull feed on phone.", data.run), true);
+      const fallbackStatus = hosted
+        ? "Offers refreshed — pull feed on phone."
+        : "Merchants & offers refreshed — pull feed on phone.";
+      setStatus(data.seedOutput || appendLastOfferRefreshNote(fallbackStatus, data.run), true);
       SC.refreshPlaybookStatus();
     } catch (e) {
       setStatus(String(e.message || e), false);
