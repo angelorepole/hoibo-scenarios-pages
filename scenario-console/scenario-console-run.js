@@ -94,7 +94,7 @@
           ` · ${S.consoleEnvLabel} · ${deviceNames(S.currentRun.devices)}<br />` +
           `Started <strong>${formatRunWhen(S.currentRun.started_at)}</strong><br />` +
           `Phone field log should show run <strong>${shortId}</strong>` +
-          `<br />After fresh install: verify <strong>App id</strong> on phone matches <code>shared/devices.json</code>` +
+          `<br />After fresh install: verify <strong>App id</strong> on phone matches <code>shared/secrets/devices.json</code>` +
           `<br />Centre ${centre} · ${S.currentRun.radius_m || S.radiusM} m` +
           `<br />Last offer refresh: <strong>${formatRunWhen(lastOfferRefreshIso(S.currentRun))}</strong>`;
       }
@@ -406,7 +406,7 @@
       const devicePart = prepOk && prepNames ? `Phones reset: ${prepNames}. ` : prepOk ? "Phones reset. " : "";
       const syncPart = runCode ? `Run sync id on phone: ${runCode}. ` : "";
       const appIdPart =
-        "⚠️ After fresh install: copy App id from Deal alert test log on phone — must match shared/devices.json before Field log. ";
+        "⚠️ After fresh install: copy App id from Deal alert test log on phone — must match shared/secrets/devices.json before Field log. ";
       setStatus(`${devicePart}${syncPart}${appIdPart}${seedLine}`, true);
     } catch (e) {
       clearRunProgress();
