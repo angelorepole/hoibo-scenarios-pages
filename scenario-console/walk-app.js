@@ -32,6 +32,7 @@
   el("btn-run").onclick = SC.runScenario;
   el("btn-clear-zones").onclick = SC.clearDraftZones;
   el("btn-refresh-seed").onclick = SC.refreshRunSeed;
+  el("btn-retry-osm").onclick = SC.retryFailedOsmZones;
   el("btn-cleanup").onclick = SC.cleanupRun;
   el("btn-abandon").onclick = SC.abandonRun;
 

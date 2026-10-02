@@ -67,10 +67,15 @@
     toggle("phones-hint", active);
 
     const refreshSeedBtn = el("btn-refresh-seed");
+    const retryOsmBtn = el("btn-retry-osm");
     const abandonBtn = el("btn-abandon");
     el("btn-run")?.removeAttribute("hidden");
     el("btn-cleanup")?.removeAttribute("hidden");
     if (refreshSeedBtn) refreshSeedBtn.hidden = !active;
+    if (retryOsmBtn) {
+      const needsRetry = active && SC.osmRetryZoneIndexes(S.currentRun).length > 0;
+      retryOsmBtn.hidden = !needsRetry;
+    }
     if (abandonBtn) abandonBtn.hidden = !active;
     SC.syncRedeemUi(S.currentRun);
     el("btn-gps")?.toggleAttribute("disabled", active);
@@ -111,6 +116,7 @@
     const runBtn = el("btn-run");
     const cleanupBtn = el("btn-cleanup");
     const refreshSeedBtn = el("btn-refresh-seed");
+    const retryOsmBtn = el("btn-retry-osm");
     const abandonBtn = el("btn-abandon");
     const hint = el("run-hint");
     const env = S.consoleEnvLabel || "STAGE";
@@ -123,6 +129,12 @@
       }
       cleanupBtn.disabled = true;
       if (refreshSeedBtn) refreshSeedBtn.disabled = true;
+      if (retryOsmBtn) {
+        // Keep visible if this run already has empty zones, but block clicks mid-setup.
+        const retryIndexes = S.currentRun ? SC.osmRetryZoneIndexes(S.currentRun) : [];
+        retryOsmBtn.hidden = retryIndexes.length === 0;
+        retryOsmBtn.disabled = true;
+      }
       if (abandonBtn) abandonBtn.disabled = true;
       if (hint) hint.hidden = true;
       return;
@@ -137,6 +149,17 @@
       refreshSeedBtn.textContent = isHostedConsole() ? "Refresh offers" : "Refresh merchants & offers";
       refreshSeedBtn.hidden = !S.currentRun;
       refreshSeedBtn.disabled = !S.currentRun;
+    }
+    if (retryOsmBtn) {
+      const retryIndexes = S.currentRun ? SC.osmRetryZoneIndexes(S.currentRun) : [];
+      retryOsmBtn.hidden = !S.currentRun || retryIndexes.length === 0;
+      retryOsmBtn.disabled = !S.currentRun || retryIndexes.length === 0;
+      if (retryIndexes.length) {
+        const labels = retryIndexes.map((i) => i + 1).join(", ");
+        retryOsmBtn.textContent = `Retry OSM for empty zones (${labels})`;
+      } else {
+        retryOsmBtn.textContent = "Retry OSM for empty zones";
+      }
     }
     if (abandonBtn) {
       abandonBtn.hidden = !S.currentRun;
@@ -531,6 +554,50 @@
     }
   }
 
+  async function retryFailedOsmZones() {
+    if (!S.currentRun) return;
+    const indexes = SC.osmRetryZoneIndexes(S.currentRun);
+    if (!indexes.length) {
+      setStatus("No empty/failed OSM zones to retry.", false);
+      return;
+    }
+    const labels = indexes.map((i) => i + 1).join(", ");
+    if (
+      !confirm(
+        `Retry OpenStreetMap fetch for zone(s) ${labels} only?\n\nZones that already have shops stay as they are. Then pull feed on the phone.`,
+      )
+    )
+      return;
+    const btn = el("btn-retry-osm");
+    btnLoading(btn, true);
+    try {
+      const data = await apiPost("/api/scenarios/retry-osm-zones", {
+        run_id: S.currentRun.run_id,
+        zone_indexes: indexes,
+      });
+      if (data.run) showRun(data.run);
+      const added = Number(data.added_shop_count || 0);
+      setStatus(
+        data.seedOutput ||
+          data.warning ||
+          (added > 0
+            ? `Retried OSM for zone(s) ${labels}: added ${added} merchants.`
+            : `OSM retry for zone(s) ${labels} returned no shops.`),
+        added > 0,
+      );
+      SC.refreshPlaybookStatus();
+    } catch (e) {
+      setStatus(String(e.message || e), false);
+    } finally {
+      if (btn) {
+        const still = S.currentRun ? SC.osmRetryZoneIndexes(S.currentRun) : [];
+        btn.disabled = still.length === 0;
+        btn.classList.remove("loading");
+      }
+      updateRunButtons();
+    }
+  }
+
   async function abandonRun() {
     if (!S.currentRun) return;
     const notes = prompt("Why abandon? (optional)") || undefined;
@@ -571,6 +638,7 @@
     applyWalkEnvironment,
     refreshAfterWalkTargetChange,
     refreshRunSeed,
+    retryFailedOsmZones,
     abandonRun,
     closeConfirmMapModal,
   });
