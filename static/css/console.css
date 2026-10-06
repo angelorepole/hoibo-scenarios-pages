@@ -479,6 +479,7 @@ input:focus, select:focus, textarea:focus {
   position: relative;
   color: transparent !important; /* Hide button text */
   pointer-events: none;
+  opacity: 1 !important;
 }
 
 .btn.loading::after {
